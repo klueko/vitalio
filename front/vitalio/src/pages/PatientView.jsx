@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Activity, ArrowLeft, AlertCircle } from 'lucide-react';
+import { useAuth0 } from '@auth0/auth0-react';
+import { Phone, Activity, ArrowLeft, AlertCircle, LogOut } from 'lucide-react';
 import { CURRENT_PATIENT } from '../data/mockData';
 
 export default function PatientView() {
     const navigate = useNavigate();
+    const { logout } = useAuth0();
     const [sosActive, setSosActive] = useState(false);
     const [sosTimer, setSosTimer] = useState(0);
     const [measuring, setMeasuring] = useState(false);
+
+    const handleDisconnect = () => {
+        logout({
+            logoutParams: {
+                returnTo: window.location.origin,
+            },
+        });
+        // Clear local storage
+        localStorage.removeItem('vitalio_user');
+    };
 
     // SOS Logic: Hold for 3 seconds
     useEffect(() => {
@@ -51,11 +63,20 @@ export default function PatientView() {
                 <ArrowLeft size={32} />
             </button>
 
+            {/* Disconnect Button */}
+            <button
+                onClick={handleDisconnect}
+                className="disconnect-button"
+                title="Déconnexion"
+            >
+                <LogOut size={24} />
+            </button>
+
             <div className="content-wrapper">
 
                 {/* Header Patient */}
                 <div className="patient-header">
-                    <h1>Bonjour, {CURRENT_PATIENT.name}</h1>
+                    <h1>Bonjour,</h1>
                     <p className="time-display">Il est 14:30</p>
                 </div>
 

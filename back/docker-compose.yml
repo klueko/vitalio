@@ -1,0 +1,38 @@
+version: "3.8"
+
+# ============================================================================
+# MQTT Broker Docker Compose Configuration
+# Security: TLS-encrypted MQTT
+# ============================================================================
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports:
+      # SECURE PORT ONLY: MQTT over TLS (port 8883)
+      # Port 1883 (unencrypted) is intentionally NOT exposed
+      - "8883:8883"
+    volumes:
+      # Configuration file with TLS settings
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      
+      # Persistent data storage (message persistence)
+      - ./mosquitto/data:/mosquitto/data
+      
+      # Password file for username/password authentication
+      - ./mosquitto/passwd:/mosquitto/passwd
+      
+      # TLS Certificates (CA, server cert, server key)
+      # IMPORTANT: These must be generated before starting the container
+      - ./mosquitto/certs:/mosquitto/certs:ro
+      
+      # Logs directory
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - mqtt-network
+
+networks:
+  mqtt-network:
+    driver: bridge
