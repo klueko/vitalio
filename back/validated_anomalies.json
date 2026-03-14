@@ -1,0 +1,25 @@
+[
+    { "measurement": { "heart_rate": 128, "spo2": 86, "temperature": 38.3, "signal_quality": 72 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 130, "spo2": 85, "temperature": 38.5, "signal_quality": 70 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 126, "spo2": 87, "temperature": 38.1, "signal_quality": 74 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 132, "spo2": 84, "temperature": 38.7, "signal_quality": 68 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 129, "spo2": 86, "temperature": 38.4, "signal_quality": 71 }, "validated": true, "doctor_decision": "confirmed" },
+  
+    { "measurement": { "heart_rate": 127, "spo2": 88, "temperature": 38.0, "signal_quality": 75 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 134, "spo2": 83, "temperature": 38.9, "signal_quality": 66 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 131, "spo2": 85, "temperature": 38.6, "signal_quality": 69 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 125, "spo2": 89, "temperature": 37.9, "signal_quality": 76 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 133, "spo2": 84, "temperature": 38.8, "signal_quality": 67 }, "validated": true, "doctor_decision": "confirmed" },
+  
+    { "measurement": { "heart_rate": 135, "spo2": 82, "temperature": 39.0, "signal_quality": 65 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 124, "spo2": 90, "temperature": 37.8, "signal_quality": 78 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 136, "spo2": 81, "temperature": 39.1, "signal_quality": 64 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 129, "spo2": 87, "temperature": 38.2, "signal_quality": 73 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 138, "spo2": 80, "temperature": 39.3, "signal_quality": 62 }, "validated": true, "doctor_decision": "confirmed" },
+  
+    { "measurement": { "heart_rate": 126, "spo2": 88, "temperature": 38.1, "signal_quality": 74 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 140, "spo2": 79, "temperature": 39.5, "signal_quality": 60 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 137, "spo2": 81, "temperature": 39.2, "signal_quality": 63 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 128, "spo2": 86, "temperature": 38.3, "signal_quality": 72 }, "validated": true, "doctor_decision": "confirmed" },
+    { "measurement": { "heart_rate": 139, "spo2": 80, "temperature": 39.4, "signal_quality": 61 }, "validated": true, "doctor_decision": "confirmed" }
+  ]

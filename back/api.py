@@ -295,7 +295,7 @@ def verify_jwt(token: str) -> Dict[str, Any]:
         }, 401)
 
 
-def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
+def get_or_create_user(auth0_sub: str) -> str:
     """
     Behaviour:
         - Look up user by auth0_sub in public.users
@@ -304,7 +304,7 @@ def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
 
     Constraints:
         - Never touches auth.users or Supabase Auth
-        - Only relies on the Auth0 subject (auth0_sub) and optional email
+        - Resolves users only by auth0_sub. Insert payload: {"auth0_sub": auth0_sub} only.
     """
     if not auth0_sub:
         raise AuthError(
@@ -341,8 +341,6 @@ def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
 
         # 2) Not found: attempt to create the user
         insert_payload: Dict[str, Any] = {"auth0_sub": auth0_sub}
-        # email can be None; assume column allows NULL
-        insert_payload["email"] = email
 
         try:
             insert_response = (
@@ -422,21 +420,19 @@ def requires_auth(f):
         
         # Extract user_id from 'sub' claim and store in request context
         auth0_sub = payload.get("sub")
-        user_email = payload.get("email")
-        
+
         if not auth0_sub:
             raise AuthError({
                 "code": "invalid_token",
                 "message": "JWT missing user identifier in 'sub' claim"
             }, 401)
-        
+
         # Resolve or create internal application user (public.users)
-        user_id = get_or_create_user(auth0_sub, user_email)
-        
+        user_id = get_or_create_user(auth0_sub)
+
         # Store authenticated user information in Flask request context
         g.user_id_auth = auth0_sub          # Raw Auth0 subject (for logging/traces)
         g.user_id = user_id                 # Internal UUID from public.users.id
-        g.user_email = user_email
         g.jwt_payload = payload
         
         return f(*args, **kwargs)
@@ -532,7 +528,7 @@ def get_user_record(user_id: str) -> Dict[str, Any]:
     try:
         resp = (
             supabase_client.table("users")
-            .select("id, email, role")
+            .select("id, role")
             .eq("id", user_id)
             .execute()
         )
@@ -1317,10 +1313,8 @@ def get_doctor_patients_measurements():
     Return measurements for all patients associated with the connected doctor
     (doctor_requests with status = 'approved').
 
-    For each approved patient:
-    - Resolve user id from users.email = patient_email
-    - Get all device_ids from user_devices for that user
-    - Fetch measurements for each device and aggregate (sorted by timestamp desc, limited per patient)
+    Lists approved patient_emails from doctor_requests. Does not resolve user id from email.
+    Returns one entry per approved request: patient_email + measurements (empty; no user resolution).
     """
     supabase_client = get_supabase_client()
     if not supabase_client:
@@ -1333,7 +1327,6 @@ def get_doctor_patients_measurements():
         )
 
     try:
-        # 1) Approved doctor_requests for this doctor
         req_resp = (
             supabase_client.table("doctor_requests")
             .select("patient_email")
@@ -1346,50 +1339,11 @@ def get_doctor_patients_measurements():
         if not patient_emails:
             return jsonify({"patients": []}), 200
 
-        # 2) Resolve user ids from emails
-        users_resp = (
-            supabase_client.table("users")
-            .select("id, email")
-            .in_("email", patient_emails)
-            .execute()
-        )
-        users_data = users_resp.data or []
-        email_to_user_id = {u.get("email"): u.get("id") for u in users_data if u.get("email") and u.get("id")}
-
-        # 3) For each patient, get device_ids and then measurements
-        MEASUREMENTS_LIMIT_PER_PATIENT = 100
-        patients_with_measurements = []
-
-        for patient_email in patient_emails:
-            user_id = email_to_user_id.get(patient_email)
-            if not user_id:
-                patients_with_measurements.append({
-                    "patient_email": patient_email,
-                    "measurements": [],
-                })
-                continue
-            device_ids = get_device_ids_for_user(user_id)
-            all_measurements = []
-            for device_id in device_ids:
-                try:
-                    measurements = get_device_measurements(device_id)
-                    for m in measurements:
-                        m_copy = dict(m)
-                        m_copy["device_id"] = device_id
-                        all_measurements.append(m_copy)
-                except Exception:
-                    continue
-            # Sort by timestamp desc and limit
-            all_measurements.sort(
-                key=lambda x: (x.get("timestamp") or ""),
-                reverse=True,
-            )
-            all_measurements = all_measurements[:MEASUREMENTS_LIMIT_PER_PATIENT]
-            patients_with_measurements.append({
-                "patient_email": patient_email,
-                "measurements": all_measurements,
-            })
-
+        # Do not resolve user id from email; return each patient with empty measurements
+        patients_with_measurements = [
+            {"patient_email": pe, "measurements": []}
+            for pe in patient_emails
+        ]
         return jsonify({"patients": patients_with_measurements}), 200
     except DatabaseError:
         raise

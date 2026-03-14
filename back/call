@@ -1,0 +1,17 @@
+curl -X POST 'https://dev-7gr8anugpgmbscnd/oauth/token'
+  --header 'content-type: application/json'
+  --data '{
+    "grant_type": "password",
+    "username": "malika1001@mail.com",
+    "password": "Nodis2434!!!",
+    "audience": "auth",
+    "client_id": "UcJNidAfIh0J0EKEBjRLnUWAcii6wl2A",
+    "client_secret": "AT74yFrVFq1yevkfBdLzh6B2ALmo7duNZOYiZh44YdLNAvWieDbNTRLHib-NeUuf",
+    "scope": "openid profile email"
+  }'
+
+
+  curl -X GET http://127.0.0.1:5000/api/private \
+  -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InFLUGw3Rk40cm0yQ3Y3YzJ0Nmd6UiJ9.eyJpc3MiOiJodHRwczovL2Rldi03Z3I4YW51Z3BnbWJzY25kLmV1LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw2OTZmODdjYjBkMWRhYjk1YjFiMDJlMzkiLCJhdWQiOlsiYXV0aCIsImh0dHBzOi8vZGV2LTdncjhhbnVncGdtYnNjbmQuZXUuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTc2ODkxODI0MCwiZXhwIjoxNzY5MDA0NjQwLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIiwiZ3R5IjoicGFzc3dvcmQiLCJhenAiOiJVY0pOaWRBZkloMEowRUtFQmpSTG5VV0FjaWk2d2wyQSJ9.S5BRruyQNWxv0honsWMHvJqp6hzJenypQShZRudj81i56gVEm9mRY7G4jHZOqVVtXCf-Z1S4_aLzLuBkmlUEP7SeG2_FpWAlNZZcy6i9ESkVOFEu1tQlAm9rckfdHvKSZdoePbMBQCXwk_6oi5tbGsRlr3PshcW3EsBmCusdxiUvaH0ou0sRBSU-vA--DeN5mAEudoWaZrG0bkJFlGh6x5S-mxJs1bL_vHZD0uAiPHxdYjycUkV_AxF3ZPhO63uI3PO57aFgHm4W_9bhvTdRsmJP9DGAGGayPfYBXZTHfwuGEKbJkXl_n8-wYFOH-3UQgjW1DJdRTpFLFMclZicZfw"
+ 
+

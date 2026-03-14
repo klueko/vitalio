@@ -1,0 +1,11 @@
+{
+  "version": "1.2",
+  "timestamp_utc": "2026-01-29T14:41:59.305021+00:00",
+  "dataset": {
+    "n_initial": 300,
+    "n_validated_anomalies": 2,
+    "n_total": 302,
+    "description": "données simulées + anomalies validées (doctor_decision=confirmed)"
+  },
+  "model_path": "C:\\mqtt\\back\\models\\model_1.2.pkl"
+}

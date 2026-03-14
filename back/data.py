@@ -40,7 +40,7 @@ CA_CERT_PATH = os.getenv("MQTT_CA_CERT", "./mosquitto/certs/ca.crt")
 # match the value stored in the database (devices.serial_number). This keeps
 # MQTT fully agnostic of the user while still allowing user ↔ device linkage
 # through the user_devices pivot table.
-DEVICE_ID = "SIM-ESP32-003"
+DEVICE_ID = "SIM-ESP32-002"
 if not DEVICE_ID:
     print("ERROR: DEVICE_ID is not set.")
     print("  Please set the environment variable DEVICE_ID to the serial number")
@@ -51,6 +51,22 @@ if not DEVICE_ID:
     sys.exit(1)
 
 TOPIC = f"vitalio/dev/{DEVICE_ID}/measurements"
+
+# ============================================================================
+# Static simulated measurements for ML pipeline (unsupervised training)
+# Format: list of dicts with heart_rate (int), spo2 (int), temperature (float),
+# signal_quality (int). Used by main.py for Isolation Forest training.
+# ============================================================================
+_random_state = random.Random(42)
+measurements = [
+    {
+        "heart_rate": _random_state.randint(60, 100),
+        "spo2": _random_state.randint(95, 100),
+        "temperature": round(_random_state.uniform(36.5, 37.5), 2),
+        "signal_quality": _random_state.randint(80, 100),
+    }
+    for _ in range(300)
+]
 
 # =========================
 # Simulation
