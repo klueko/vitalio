@@ -1,0 +1,304 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { useAuth0 } from '@auth0/auth0-react'
+import {
+  BrainCircuit,
+  ShieldAlert,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  TrendingUp,
+  Activity,
+  Info,
+} from 'lucide-react'
+import {
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
+} from 'recharts'
+import { getPatientData, getMLModelInfo } from '../services/api'
+import PatientLayout from '../components/PatientLayout'
+
+const LEVEL_CONFIG = {
+  normal:   { color: '#22c55e', bg: '#f0fdf4', label: 'Normal',   Icon: CheckCircle2 },
+  warning:  { color: '#f59e0b', bg: '#fffbeb', label: 'Alerte',   Icon: AlertTriangle },
+  critical: { color: '#ef4444', bg: '#fef2f2', label: 'Critique', Icon: XCircle },
+}
+
+const formatTime = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+const formatShort = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit' })
+}
+
+export default function PatientMLView() {
+  const { getAccessTokenSilently } = useAuth0()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [measurements, setMeasurements] = useState([])
+  const [modelInfo, setModelInfo] = useState(null)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        const token = await getAccessTokenSilently()
+        const [data, mlInfo] = await Promise.all([
+          getPatientData(token),
+          getMLModelInfo().catch(() => null),
+        ])
+        if (mounted) {
+          setMeasurements(Array.isArray(data.measurements) ? data.measurements : [])
+          setModelInfo(mlInfo)
+        }
+      } catch (e) {
+        if (mounted) setError(e.message || 'Erreur de chargement')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => { mounted = false }
+  }, [getAccessTokenSilently])
+
+  const mlData = useMemo(() => {
+    const withScore = measurements
+      .filter((m) => m.ml_score != null)
+      .slice()
+      .reverse()
+
+    const scoreSeries = withScore.map((m) => ({
+      timestamp: formatShort(m.timestamp),
+      fullTime: formatTime(m.timestamp),
+      score: Number((m.ml_score ?? 0).toFixed(3)),
+      level: m.ml_level || 'normal',
+    }))
+
+    const counts = { normal: 0, warning: 0, critical: 0 }
+    withScore.forEach((m) => {
+      const lvl = m.ml_level || 'normal'
+      if (counts[lvl] !== undefined) counts[lvl]++
+    })
+
+    const vitalSeries = withScore.slice(-60).map((m) => ({
+      timestamp: formatShort(m.timestamp),
+      heart_rate: m.heart_rate,
+      spo2: m.spo2,
+      temperature: m.temperature,
+      score: Number((m.ml_score ?? 0).toFixed(3)),
+    }))
+
+    const anomalies = withScore
+      .filter((m) => m.ml_level === 'critical' || m.ml_level === 'warning')
+      .slice(-20)
+      .reverse()
+
+    return { scoreSeries, counts, vitalSeries, anomalies, total: withScore.length }
+  }, [measurements])
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null
+    const d = payload[0].payload
+    return (
+      <div className="ml-chart-tooltip">
+        <p className="ml-chart-tooltip-time">{d.fullTime || d.timestamp}</p>
+        {payload.map((p) => (
+          <p key={p.dataKey} style={{ color: p.color }}>
+            {p.name}: <strong>{p.value}</strong>
+          </p>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <PatientLayout>
+      <div className="patient-ml">
+        <header className="ml-header">
+          <div>
+            <h1><BrainCircuit size={28} /> Analyse ML</h1>
+            <p>Détection d'anomalies par Intelligence Artificielle sur vos constantes vitales.</p>
+          </div>
+          {modelInfo && (
+            <div className="ml-model-badge">
+              <Info size={14} />
+              <span>Modèle {modelInfo.version}{modelInfo.loaded ? '' : ' (non chargé)'}</span>
+            </div>
+          )}
+        </header>
+
+        {loading && <div className="ml-panel">Chargement des données ML...</div>}
+        {!loading && error && (
+          <div className="ml-panel ml-panel--error">
+            <ShieldAlert size={20} /> <span>{error}</span>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* KPI cards */}
+            <section className="ml-kpi-grid">
+              {Object.entries(LEVEL_CONFIG).map(([level, cfg]) => {
+                const count = mlData.counts[level] || 0
+                const Icon = cfg.Icon
+                return (
+                  <article key={level} className="ml-kpi-card" style={{ borderColor: cfg.color, background: cfg.bg }}>
+                    <Icon size={22} color={cfg.color} />
+                    <div>
+                      <span className="ml-kpi-value" style={{ color: cfg.color }}>{count}</span>
+                      <span className="ml-kpi-label">{cfg.label}</span>
+                    </div>
+                  </article>
+                )
+              })}
+              <article className="ml-kpi-card" style={{ borderColor: '#6366f1', background: '#eef2ff' }}>
+                <TrendingUp size={22} color="#6366f1" />
+                <div>
+                  <span className="ml-kpi-value" style={{ color: '#6366f1' }}>{mlData.total}</span>
+                  <span className="ml-kpi-label">Total analysé</span>
+                </div>
+              </article>
+            </section>
+
+            {mlData.scoreSeries.length === 0 && (
+              <div className="ml-panel ml-panel--info">
+                <Info size={20} />
+                <span>Aucune mesure scorée par le modèle ML pour le moment. Les scores apparaîtront après l'entraînement du modèle et la réception de nouvelles mesures.</span>
+              </div>
+            )}
+
+            {mlData.scoreSeries.length > 0 && (
+              <>
+                {}
+                <section className="ml-panel">
+                  <h2><Activity size={18} /> Score d'anomalie dans le temps</h2>
+                  <p className="ml-panel-sub">Plus le score est élevé, plus la mesure est inhabituielle.</p>
+                  <div className="ml-chart-wrap">
+                    <ResponsiveContainer width="100%" height={280}>
+                      <AreaChart data={mlData.scoreSeries} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} />
+                        <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area
+                          type="monotone" dataKey="score" name="Score ML"
+                          stroke="#6366f1" fill="url(#scoreGrad)" strokeWidth={2}
+                          dot={false} activeDot={{ r: 4, fill: '#6366f1' }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* Distribution bar */}
+                <section className="ml-panel">
+                  <h2>Répartition des niveaux</h2>
+                  <div className="ml-chart-wrap">
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart
+                        data={[
+                          { name: 'Normal', value: mlData.counts.normal, fill: '#22c55e' },
+                          { name: 'Alerte', value: mlData.counts.warning, fill: '#f59e0b' },
+                          { name: 'Critique', value: mlData.counts.critical, fill: '#ef4444' },
+                        ]}
+                        margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="value" name="Mesures" radius={[6, 6, 0, 0]}>
+                          {[
+                            { fill: '#22c55e' },
+                            { fill: '#f59e0b' },
+                            { fill: '#ef4444' },
+                          ].map((entry, i) => (
+                            <Cell key={i} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* Vitals overlay with ML score */}
+                <section className="ml-panel">
+                  <h2>Constantes vitales &amp; score ML</h2>
+                  <p className="ml-panel-sub">Superposition des mesures physiologiques et du score d'anomalie.</p>
+                  <div className="ml-chart-wrap">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={mlData.vitalSeries} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="vitals" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="score" orientation="right" domain={[0, 1]} tick={{ fontSize: 11 }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                        <Line yAxisId="vitals" type="monotone" dataKey="heart_rate" name="FC (bpm)" stroke="#ef4444" dot={false} strokeWidth={1.5} />
+                        <Line yAxisId="vitals" type="monotone" dataKey="spo2" name="SpO2 (%)" stroke="#3b82f6" dot={false} strokeWidth={1.5} />
+                        <Line yAxisId="vitals" type="monotone" dataKey="temperature" name="Temp (°C)" stroke="#f59e0b" dot={false} strokeWidth={1.5} />
+                        <Line yAxisId="score" type="monotone" dataKey="score" name="Score ML" stroke="#6366f1" dot={false} strokeWidth={2} strokeDasharray="5 3" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {}
+                {mlData.anomalies.length > 0 && (
+                  <section className="ml-panel">
+                    <h2><AlertTriangle size={18} /> Dernières anomalies détectées</h2>
+                    <div className="ml-anomaly-table-wrap">
+                      <table className="ml-anomaly-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Niveau</th>
+                            <th>Score</th>
+                            <th>FC</th>
+                            <th>SpO2</th>
+                            <th>Temp</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mlData.anomalies.map((m, i) => {
+                            const cfg = LEVEL_CONFIG[m.ml_level] || LEVEL_CONFIG.warning
+                            return (
+                              <tr key={`${m.timestamp}-${i}`}>
+                                <td>{formatTime(m.timestamp)}</td>
+                                <td>
+                                  <span className="ml-level-badge" style={{ background: cfg.bg, color: cfg.color }}>
+                                    {cfg.label}
+                                  </span>
+                                </td>
+                                <td>{(m.ml_score ?? 0).toFixed(3)}</td>
+                                <td>{m.heart_rate ?? '-'}</td>
+                                <td>{m.spo2 ?? '-'}</td>
+                                <td>{m.temperature != null ? Number(m.temperature).toFixed(1) : '-'}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </PatientLayout>
+  )
+}

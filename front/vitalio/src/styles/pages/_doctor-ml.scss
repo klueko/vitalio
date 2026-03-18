@@ -1,0 +1,614 @@
+@use '../variables' as *;
+
+.doctor-ml {
+  padding: 1.5rem 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.doctor-ml .ml-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  p {
+    margin: 0.3rem 0 0;
+    color: #64748b;
+  }
+}
+
+.doctor-ml .ml-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ml-retrain-btn {
+  padding: 0.55rem 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.ml-panel--success {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.doctor-ml .ml-anomaly-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #0f172a;
+  }
+}
+
+.ml-filter-group {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.ml-filter-btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  &--active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+}
+
+.ml-action-btns {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ml-action-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &--validate {
+    color: #22c55e;
+
+    &:hover:not(:disabled) {
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+  }
+
+  &--reject {
+    color: #ef4444;
+
+    &:hover:not(:disabled) {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.ml-table-validated {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.ml-table-mono {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.8rem;
+}
+
+.ml-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+// Forecast section
+.ml-forecast-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.ml-patient-select {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #0f172a;
+  background: #fff;
+  min-width: 180px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+}
+
+// Summary bar
+.ml-forecast-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+.ml-forecast-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.ml-confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.ml-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.ml-forecast-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.ml-forecast-version {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+// Interpretation block
+.ml-forecast-interpretation {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #1e40af;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+}
+
+.ml-forecast-interpretation-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.ml-forecast-interpretation-action {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+// Data quality warnings
+.ml-forecast-warnings {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #92400e;
+}
+
+// Trend cards
+.ml-forecast-trends {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.25rem;
+}
+
+.ml-forecast-trend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.ml-trend-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ml-forecast-trend-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  text-transform: capitalize;
+}
+
+.ml-trend-confidence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ml-trend-card-body {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ml-forecast-trend-arrow {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ml-forecast-trend-detail {
+  font-size: 0.8rem;
+  color: #475569;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.ml-trend-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ml-forecast-trend-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ml-trend-sig {
+  font-size: 0.68rem;
+  color: #22c55e;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  background: #f0fdf4;
+  border-radius: 4px;
+}
+
+.ml-trend-ns {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+// Clinical drift alerts
+.ml-clinical-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ml-clinical-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+
+  &--warning {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+  }
+
+  &--critical {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+  }
+}
+
+.ml-clinical-alert-eta {
+  margin-left: auto;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+// Chart header with confidence
+.ml-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+
+  h3 {
+    font-size: 0.9rem;
+    color: #475569;
+    margin: 0;
+  }
+}
+
+// Toast notifications
+.ml-toast {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.2rem;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  animation: ml-toast-in 0.3s ease;
+}
+
+@keyframes ml-toast-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// Anomaly filters
+.ml-anomaly-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.ml-date-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  color: #64748b;
+}
+
+.ml-date-input {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #0f172a;
+  background: #fff;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+  }
+}
+
+.ml-date-sep {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+// Suggestion card
+.ml-suggestion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #6366f1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #eef2ff;
+    border-color: #a5b4fc;
+  }
+}
+
+.ml-suggestion-row td {
+  padding: 0 !important;
+  border-top: none !important;
+}
+
+.ml-suggestion-card {
+  margin: 0 1rem 0.75rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+}
+
+.ml-suggestion-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  color: #1e40af;
+}
+
+.ml-suggestion-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.ml-urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid;
+  margin-left: auto;
+}
+
+.ml-suggestion-action {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ml-suggestion-reasoning {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.5;
+
+  li {
+    margin-bottom: 0.15rem;
+  }
+}
+
+.ml-row-expanded {
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .doctor-ml {
+    padding: 1rem;
+  }
+
+  .doctor-ml .ml-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .ml-anomaly-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ml-forecast-controls {
+    width: 100%;
+  }
+
+  .ml-patient-select {
+    width: 100%;
+  }
+
+  .ml-forecast-trends {
+    grid-template-columns: 1fr;
+  }
+
+  .ml-forecast-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

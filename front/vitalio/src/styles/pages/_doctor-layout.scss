@@ -1,0 +1,218 @@
+@use '../variables' as *;
+
+$doc-sidebar-width: 240px;
+$doc-sidebar-collapsed: 64px;
+$doc-sidebar-bg: #0c1929;
+$doc-sidebar-text: #94a3b8;
+$doc-sidebar-active: #2563eb;
+$doc-sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+$doc-sidebar-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+.doctor-layout {
+  display: flex;
+  min-height: 100vh;
+
+  &--collapsed .doctor-sidebar {
+    width: $doc-sidebar-collapsed;
+  }
+
+  &--collapsed .doctor-layout-main {
+    margin-left: $doc-sidebar-collapsed;
+  }
+}
+
+.doctor-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: $doc-sidebar-width;
+  background: $doc-sidebar-bg;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: width $doc-sidebar-transition;
+  overflow: hidden;
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    min-height: 64px;
+  }
+
+  .sidebar-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .sidebar-toggle {
+    background: none;
+    border: none;
+    color: $doc-sidebar-text;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+
+    &:hover {
+      background: $doc-sidebar-hover-bg;
+      color: #fff;
+    }
+  }
+
+  .sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+  }
+
+  .sidebar-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+
+    &--doctor {
+      background: linear-gradient(135deg, $doc-sidebar-active, #06b6d4);
+    }
+  }
+
+  .sidebar-user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    overflow: hidden;
+  }
+
+  .sidebar-user-name {
+    font-size: 0.88rem;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-user-role {
+    font-size: 0.75rem;
+    color: $doc-sidebar-text;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    color: $doc-sidebar-text;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+
+    svg {
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      background: $doc-sidebar-hover-bg;
+      color: #f1f5f9;
+    }
+
+    &--active {
+      background: rgba($doc-sidebar-active, 0.15);
+      color: #fff;
+
+      svg {
+        color: $doc-sidebar-active;
+      }
+    }
+
+    &--danger:hover {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.1);
+    }
+  }
+
+  .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin-top: auto;
+  }
+}
+
+.doctor-layout-main {
+  flex: 1;
+  margin-left: $doc-sidebar-width;
+  transition: margin-left $doc-sidebar-transition;
+  min-height: 100vh;
+}
+
+.doctor-layout .doctor-container {
+  min-height: auto;
+}
+
+.doctor-layout .doctor-container .main-content .doctor-header .doctor-logout-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .doctor-sidebar {
+    width: $doc-sidebar-collapsed;
+  }
+
+  .doctor-layout-main {
+    margin-left: $doc-sidebar-collapsed;
+  }
+
+  .doctor-sidebar .sidebar-brand,
+  .doctor-sidebar .sidebar-user,
+  .doctor-sidebar .sidebar-link span {
+    display: none;
+  }
+
+  .doctor-sidebar .sidebar-link {
+    justify-content: center;
+    padding: 0.65rem;
+  }
+
+  .doctor-sidebar .sidebar-footer .sidebar-link {
+    justify-content: center;
+  }
+}
