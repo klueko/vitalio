@@ -1,7 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth0 } from '@auth0/auth0-react';
 import { ArrowLeft, Wifi, Battery, Search, Server, Power, RefreshCw, AlertOctagon } from 'lucide-react';
 import { SENSORS_STATUS } from '../data/mockData';
+import { adminAssociateDoctorPatient } from '../services/api';
+
+const STATUS_LABELS = {
+    online: 'En ligne',
+    offline: 'Hors ligne',
+    warning: 'Alerte',
+};
 
 const StatusBadge = ({ status }) => {
     const colors = {
@@ -10,8 +18,8 @@ const StatusBadge = ({ status }) => {
         warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
     };
     return (
-        <span className={`px-2 py-1 rounded text-xs font-mono uppercase border ${colors[status] || colors.offline}`}>
-            {status}
+        <span className={`px-2 py-1 rounded text-xs font-mono border ${colors[status] || colors.offline}`}>
+            {STATUS_LABELS[status] || status}
         </span>
     );
 };
@@ -44,11 +52,28 @@ const SignalIndicator = ({ strength }) => {
 
 export default function AdminView() {
     const navigate = useNavigate();
+    const { getAccessTokenSilently } = useAuth0();
+    const [doctorId, setDoctorId] = React.useState('');
+    const [patientId, setPatientId] = React.useState('');
+    const [linkMessage, setLinkMessage] = React.useState('');
+    const [linkError, setLinkError] = React.useState('');
+
+    const handleAssociate = async () => {
+        try {
+            setLinkError('');
+            setLinkMessage('');
+            const token = await getAccessTokenSilently();
+            await adminAssociateDoctorPatient(token, doctorId.trim(), patientId.trim());
+            setLinkMessage('Association médecin-patient créée.');
+        } catch (e) {
+            setLinkError(e.message || "Impossible de créer l'association");
+        }
+    };
 
     return (
         <div className="admin-container admin-theme">
 
-            {/* Navbar Technical */}
+            {}
             <nav className="admin-nav">
                 <div className="nav-left">
                     <button onClick={() => navigate('/')} className="back-btn">
@@ -59,52 +84,77 @@ export default function AdminView() {
                             <Server size={18} className="icon" />
                             VitalIO_Admin
                         </h1>
-                        <p className="version">v2.4.0-stable • system: ok</p>
+                        <p className="version">v2.4.0-stable • système : ok</p>
                     </div>
                 </div>
                 <div className="nav-right">
                     <span className="status-dot animate-pulse"></span>
-                    <span className="status-text">Connected</span>
+                    <span className="status-text">Connecté</span>
                 </div>
             </nav>
 
             <div className="admin-content">
 
-                {/* KPI Grid */}
+                {}
                 <div className="kpi-grid">
                     <div className="kpi-card">
-                        <p className="label">Total Sensors</p>
+                        <p className="label">Capteurs totaux</p>
                         <p className="value">42</p>
                     </div>
                     <div className="kpi-card">
-                        <p className="label">Online</p>
+                        <p className="label">En ligne</p>
                         <p className="value ok">38</p>
                     </div>
                     <div className="kpi-card">
-                        <p className="label">Warnings</p>
+                        <p className="label">Alertes</p>
                         <p className="value warn">3</p>
                     </div>
                     <div className="kpi-card">
-                        <p className="label">Offline</p>
+                        <p className="label">Hors ligne</p>
                         <p className="value err">1</p>
                     </div>
                 </div>
 
-                {/* Toolbar */}
+                {}
                 <div className="toolbar">
                     <div className="search-box">
                         <Search className="icon" size={16} />
                         <input
                             type="text"
-                            placeholder="Search device ID, location..."
+                            placeholder="Rechercher ID appareil, emplacement..."
                         />
                     </div>
                     <button className="refresh-btn">
-                        <RefreshCw size={16} /> Refresh Grid
+                        <RefreshCw size={16} /> Actualiser
                     </button>
                 </div>
 
-                {/* Devices Grid */}
+                <div className="patient-table-section" style={{ marginBottom: '16px' }}>
+                    <div className="section-header">
+                        <h3>Liaison médecin / patient</h3>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <input
+                            type="text"
+                            placeholder="doctor_user_id_auth"
+                            value={doctorId}
+                            onChange={(event) => setDoctorId(event.target.value)}
+                        />
+                        <input
+                            type="text"
+                            placeholder="patient_user_id_auth"
+                            value={patientId}
+                            onChange={(event) => setPatientId(event.target.value)}
+                        />
+                        <button className="refresh-btn" onClick={handleAssociate}>
+                            Associer
+                        </button>
+                    </div>
+                    {linkError && <p className="doctor-error">{linkError}</p>}
+                    {linkMessage && <p>{linkMessage}</p>}
+                </div>
+
+                {}
                 <div className="devices-grid">
                     {SENSORS_STATUS.map(sensor => (
                         <div key={sensor.id} className="device-card group">
@@ -120,11 +170,11 @@ export default function AdminView() {
 
                             <div className="info-list">
                                 <div className="info-row border-b">
-                                    <span className="label">Location</span>
+                                    <span className="label">Emplacement</span>
                                     <span className="val">{sensor.location}</span>
                                 </div>
                                 <div className="info-row">
-                                    <span className="label">Power</span>
+                                    <span className="label">Batterie</span>
                                     <BatteryIndicator level={sensor.battery} />
                                 </div>
                                 <div className="info-row">
@@ -134,10 +184,10 @@ export default function AdminView() {
                             </div>
 
                             <div className="actions">
-                                <button title="Restart">
+                                <button title="Redémarrer">
                                     <Power size={16} />
                                 </button>
-                                <button title="Diagnose">
+                                <button title="Diagnostiquer">
                                     <AlertOctagon size={16} />
                                 </button>
                             </div>

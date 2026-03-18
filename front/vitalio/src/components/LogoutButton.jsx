@@ -11,7 +11,7 @@ export default function LogoutButton({ className = '' }) {
                 returnTo: window.location.origin,
             },
         });
-        // Clear local storage
+        
         localStorage.removeItem('vitalio_user');
     };
 

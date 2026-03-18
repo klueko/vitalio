@@ -242,7 +242,7 @@ function App() {
         setApiLoading(true);
         setApiError(null);
         try {
-          // Étape 3 du diagramme: GET /api/me/data avec Bearer JWT
+          
           const token = await getAccessTokenSilently();
           const response = await fetch(`${apiUrl}/api/me/data`, {
             method: "GET",

@@ -2,10 +2,6 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 
-/**
- * Protected Route Component
- * Redirects unauthenticated users to login page
- */
 export default function ProtectedRoute({ children }) {
     const { isAuthenticated, isLoading } = useAuth0();
 

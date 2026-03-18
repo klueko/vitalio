@@ -15,6 +15,11 @@
 @use 'pages/login';
 @use 'pages/home';
 @use 'pages/patient';
+@use './pages/patient-layout';
+@use 'pages/patient-ml';
 @use 'pages/family';
 @use 'pages/admin';
 @use 'pages/doctor';
+@use 'pages/doctor-layout';
+@use 'pages/doctor-ml';
+@use 'pages/doctor-patient-ml';

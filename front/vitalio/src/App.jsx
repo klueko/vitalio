@@ -1,20 +1,28 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
 import Login from './pages/Login';
 import Home from './pages/Home';
+import InviteAccept from './pages/InviteAccept';
+import CaregiverInviteAccept from './pages/CaregiverInviteAccept';
 import PatientView from './pages/PatientView';
+import PatientMeasurement from './pages/PatientMeasurement';
+import PatientMLView from './pages/PatientMLView';
 import DoctorView from './pages/DoctorView';
+import DoctorPatientDetail from './pages/DoctorPatientDetail';
+import DoctorPatientML from './pages/DoctorPatientML';
+import DoctorMLView from './pages/DoctorMLView';
 import FamilyView from './pages/FamilyView';
+import CaregiverPatientDetail from './pages/CaregiverPatientDetail';
 import AdminView from './pages/AdminView';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth0();
-
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/invite" element={<InviteAccept />} />
+      <Route path="/invite-caregiver" element={<CaregiverInviteAccept />} />
       <Route 
         path="/home" 
         element={
@@ -27,15 +35,79 @@ function AppRoutes() {
         path="/patient" 
         element={
           <ProtectedRoute>
-            <PatientView />
+            <RoleProtectedRoute allowedRoles={['patient']}>
+              <PatientView />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } 
+      />
+      <Route
+        path="/patient/measure"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['patient']}>
+              <PatientMeasurement />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/ml"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['patient']}>
+              <PatientMLView />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        }
       />
       <Route 
         path="/doctor" 
         element={
           <ProtectedRoute>
-            <DoctorView />
+            <RoleProtectedRoute allowedRoles={['doctor', 'medecin', 'Superuser']}>
+              <DoctorView />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } 
+      />
+      <Route
+        path="/doctor/analyses"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['doctor', 'medecin', 'Superuser']}>
+              <DoctorMLView />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/doctor/patient/:patientId"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['doctor', 'medecin', 'Superuser']}>
+              <DoctorPatientDetail />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } 
+      />
+      <Route
+        path="/doctor/patient/:patientId/ml"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['doctor', 'medecin', 'Superuser']}>
+              <DoctorPatientML />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route 
+        path="/caregiver" 
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['caregiver', 'aidant']}>
+              <FamilyView />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } 
       />
@@ -43,7 +115,19 @@ function AppRoutes() {
         path="/family" 
         element={
           <ProtectedRoute>
-            <FamilyView />
+            <RoleProtectedRoute allowedRoles={['caregiver', 'aidant']}>
+              <FamilyView />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/caregiver/patient/:patientId" 
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['caregiver', 'aidant']}>
+              <CaregiverPatientDetail />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } 
       />
@@ -51,7 +135,9 @@ function AppRoutes() {
         path="/admin" 
         element={
           <ProtectedRoute>
-            <AdminView />
+            <RoleProtectedRoute allowedRoles={['admin']}>
+              <AdminView />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } 
       />

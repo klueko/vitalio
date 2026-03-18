@@ -1,5 +1,6 @@
 @use '../variables' as *;
 @use '../mixins' as *;
+@use 'sass:color';
 
 // Login Container
 .login-container {
@@ -304,7 +305,7 @@
     font-weight: 600;
     font-family: inherit;
     color: white;
-    background: linear-gradient(135deg, $primary, darken($primary, 10%));
+    background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
     cursor: pointer;
     transition: $transition;
     position: relative;
@@ -345,6 +346,20 @@
     span {
         position: relative;
         z-index: 1;
+    }
+
+    &-secondary {
+        background: transparent;
+        color: $primary;
+        border: 2px solid $primary;
+
+        &::before {
+            background: rgba($primary, 0.1);
+        }
+
+        &:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba($primary, 0.2);
+        }
     }
 }
 
@@ -415,17 +430,17 @@
 
     &.patient {
         background: rgba($success, 0.15);
-        color: darken($success, 10%);
+        color: color.adjust($success, $lightness: -10%);
     }
 
     &.medecin {
         background: rgba($primary, 0.15);
-        color: darken($primary, 10%);
+        color: color.adjust($primary, $lightness: -10%);
     }
 
     &.aidant {
         background: rgba($secondary, 0.15);
-        color: darken($secondary, 10%);
+        color: color.adjust($secondary, $lightness: -10%);
     }
 
     &.admin {

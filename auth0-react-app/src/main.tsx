@@ -7,7 +7,6 @@ import "./index.css";
 const domain = import.meta.env.VITE_AUTH0_DOMAIN;
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
 
-// Validate Auth0 configuration
 if (!domain || !clientId) {
   console.error("Auth0 configuration missing. Please check your .env file.");
   console.error("Required environment variables:");
@@ -16,7 +15,6 @@ if (!domain || !clientId) {
   throw new Error("Auth0 domain and client ID must be set in .env file");
 }
 
-// Validate domain format
 if (
   !domain.includes(".auth0.com") &&
   !domain.includes(".us.auth0.com") &&
@@ -47,4 +45,3 @@ ReactDOM.createRoot(rootElement).render(
     </Auth0Provider>
   </React.StrictMode>,
 );
-

@@ -114,3 +114,26 @@ function MyComponent() {
 - Check that callback URLs are configured in Auth0
 - Verify the role is set in user metadata
 - Check browser console for errors
+
+### 400 Bad Request sur l'inscription (POST /u/signup)
+
+Si vous voyez "Something went wrong" et une erreur 400 lors de l'inscription :
+
+1. **Email déjà utilisé**  
+   Auth0 renvoie 400 si l’email existe déjà. Vérifiez dans **User Management → Users** si un utilisateur avec cet email existe. Dans ce cas, utilisez « Se connecter » au lieu de « S'inscrire ».
+
+2. **Politique de mot de passe**  
+   Auth0 impose par défaut : minimum 8 caractères, au moins 1 majuscule, 1 minuscule et 1 chiffre. Sinon, l’inscription peut échouer avec 400.
+
+3. **Consulter les logs Auth0**  
+   - Auth0 Dashboard → **Monitoring** → **Logs**  
+   - Reproduire l’inscription  
+   - Ouvrir la requête `/u/signup` en erreur pour voir le message exact (ex. `user_already_exists`, `password_strength_error`).
+
+4. **Vérifier la connexion Database**  
+   - Auth0 Dashboard → **Authentication** → **Database** → **Username-Password-Authentication**  
+   - Onglet **Settings** : assurez-vous que **Disable Sign Ups** est désactivé (OFF)  
+   - Onglet **Applications** : vérifiez que votre application est bien activée pour cette connexion
+
+5. **Simplifier le mode Username** (si nécessaire)  
+   - Si le formulaire demande Email + Username, et que vous avez des erreurs, essayez de configurer la connexion en mode **Email only** (si disponible dans vos paramètres).

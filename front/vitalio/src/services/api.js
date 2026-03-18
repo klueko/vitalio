@@ -1,16 +1,5 @@
-/**
- * API Service for making authenticated requests to the backend
- */
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
-/**
- * Make an authenticated API request
- * @param {string} endpoint - API endpoint (e.g., '/api/me/data')
- * @param {string} accessToken - Auth0 access token
- * @param {Object} options - Additional fetch options
- * @returns {Promise<Response>}
- */
 export async function apiRequest(endpoint, accessToken, options = {}) {
   const url = `${API_URL}${endpoint}`
   
@@ -33,13 +22,166 @@ export async function apiRequest(endpoint, accessToken, options = {}) {
   return response.json()
 }
 
-/**
- * Get patient data (requires authentication)
- * @param {string} accessToken - Auth0 access token
- * @returns {Promise<Object>} Patient data with device_id and measurements
- */
 export async function getPatientData(accessToken) {
   return apiRequest('/api/me/data', accessToken, {
     method: 'GET',
   })
+}
+
+export async function getPatientProfile(accessToken) {
+  return apiRequest('/api/me/profile', accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function updatePatientProfile(accessToken, payload) {
+  return apiRequest('/api/me/profile', accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function submitPatientMeasurement(accessToken, measurement) {
+  return apiRequest('/api/me/measurements', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(measurement),
+  })
+}
+
+export async function getDoctorPatients(accessToken) {
+  return apiRequest('/api/doctor/patients', accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getDoctorPatientMeasurements(accessToken, patientId, days = 30) {
+  return apiRequest(`/api/doctor/patients/${encodeURIComponent(patientId)}/measurements?days=${days}`, accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getDoctorPatientTrends(accessToken, patientId) {
+  return apiRequest(`/api/doctor/patients/${encodeURIComponent(patientId)}/trends`, accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getCaregiverPatients(accessToken) {
+  return apiRequest('/api/caregiver/patients', accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getPatientMeasurementsById(accessToken, patientId, params = {}) {
+  const searchParams = new URLSearchParams()
+  if (params.limit) searchParams.set('limit', String(params.limit))
+  if (params.from) searchParams.set('from', params.from)
+  if (params.to) searchParams.set('to', params.to)
+  const query = searchParams.toString()
+  const endpoint = `/api/patients/${encodeURIComponent(patientId)}/measurements${query ? `?${query}` : ''}`
+  return apiRequest(endpoint, accessToken, { method: 'GET' })
+}
+
+export async function createDoctorFeedback(accessToken, patientId, feedbackPayload) {
+  return apiRequest(`/api/doctor/patients/${encodeURIComponent(patientId)}/feedback`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(feedbackPayload),
+  })
+}
+
+export async function getLatestPatientFeedback(accessToken, patientId, limit = 5) {
+  return apiRequest(`/api/patients/${encodeURIComponent(patientId)}/feedback/latest?limit=${limit}`, accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function createDoctorInvitation(accessToken, payload = {}) {
+  return apiRequest('/api/doctor/invitations', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function createCabinetCode(accessToken, payload = {}) {
+  return apiRequest('/api/doctor/cabinet-codes', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function acceptDoctorInvitation(accessToken, inviteToken) {
+  return apiRequest('/api/patient/invitations/accept', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ invite_token: inviteToken }),
+  })
+}
+
+export async function acceptCaregiverInvitation(accessToken, inviteToken) {
+  return apiRequest('/api/caregiver/invitations/accept', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ invite_token: inviteToken }),
+  })
+}
+
+export async function redeemCabinetCode(accessToken, code) {
+  return apiRequest('/api/patient/cabinet-codes/redeem', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+}
+
+export async function adminAssociateDoctorPatient(accessToken, doctorId, patientId) {
+  return apiRequest('/api/admin/associations/doctor-patient', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({
+      doctor_user_id_auth: doctorId,
+      patient_user_id_auth: patientId,
+    }),
+  })
+}
+
+export async function getMLModelInfo() {
+  const url = `${API_URL}/api/ml/info`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function getMLDecisions(accessToken, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.device_id) sp.set('device_id', params.device_id)
+  if (params.limit) sp.set('limit', String(params.limit))
+  const q = sp.toString()
+  return apiRequest(`/api/ml/decisions${q ? `?${q}` : ''}`, accessToken, { method: 'GET' })
+}
+
+export async function getMLAnomalies(accessToken, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.status) sp.set('status', params.status)
+  if (params.severity) sp.set('severity', params.severity)
+  if (params.device_id) sp.set('device_id', params.device_id)
+  if (params.from_date) sp.set('from_date', params.from_date)
+  if (params.to_date) sp.set('to_date', params.to_date)
+  if (params.limit) sp.set('limit', String(params.limit))
+  const q = sp.toString()
+  return apiRequest(`/api/doctor/ml-anomalies${q ? `?${q}` : ''}`, accessToken, { method: 'GET' })
+}
+
+export async function getPatientMLAnalysis(accessToken, patientId, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.days) sp.set('days', String(params.days))
+  if (params.include_forecast != null) sp.set('include_forecast', String(params.include_forecast))
+  if (params.forecast_horizon) sp.set('forecast_horizon', String(params.forecast_horizon))
+  const q = sp.toString()
+  return apiRequest(`/api/doctor/ml/patient-analysis/${encodeURIComponent(patientId)}${q ? `?${q}` : ''}`, accessToken, { method: 'GET' })
+}
+
+export async function getMLForecast(accessToken, patientId, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.days) sp.set('days', String(params.days))
+  if (params.train_days) sp.set('train_days', String(params.train_days))
+  if (params.history_hours) sp.set('history_hours', String(params.history_hours))
+  if (params.horizon) sp.set('horizon', String(params.horizon))
+  const q = sp.toString()
+  return apiRequest(`/api/doctor/ml/forecast/${encodeURIComponent(patientId)}${q ? `?${q}` : ''}`, accessToken, { method: 'GET' })
 }
