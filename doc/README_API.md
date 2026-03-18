@@ -40,9 +40,8 @@ Create a `.env` file in the project root:
 AUTH0_DOMAIN=your-tenant.auth0.com
 AUTH0_AUDIENCE=https://your-api-identifier
 
-# Database Configuration (Supabase)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-supabase-service-role-key
+# Database Configuration (MongoDB)
+MONGODB_URI=mongodb://localhost:27017
 
 # Flask Configuration (optional)
 FLASK_HOST=0.0.0.0
@@ -176,7 +175,7 @@ The API implements the following exact sequence:
 api.py
 ├── Configuration
 │   ├── Auth0 settings (domain, audience)
-│   └── Database settings (Supabase)
+│   └── Database settings (MongoDB)
 ├── Error Handling
 │   ├── AuthError (authentication failures)
 │   └── DatabaseError (database failures)
@@ -253,7 +252,7 @@ See `database_schema.md` for complete schema documentation including:
 - **Flask**: Web framework
 - **python-jose**: JWT verification (RS256)
 - **python-dotenv**: Environment variable management
-- **supabase**: Database client (PostgreSQL)
+- **pymongo**: MongoDB client
 
 ## Academic/Healthcare Context
 
@@ -289,8 +288,8 @@ Ensure the request includes `Authorization: Bearer <token>` header.
 
 ### "database_not_configured"
 
-- Ensure `SUPABASE_URL` and `SUPABASE_KEY` are set in `.env`
-- Verify Supabase credentials are correct
+- Ensure `MONGODB_URI` is set in `.env`
+- Verify MongoDB connection string and that the database is running
 
 ## License
 

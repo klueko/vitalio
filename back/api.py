@@ -404,14 +404,8 @@ def verify_jwt(token: str) -> Dict[str, Any]:
 
 def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
     """
-    Behaviour:
-        - Look up user by auth0_sub in public.users
-        - If found, return its internal UUID (id)
-        - If not found, create a new row and return the new UUID
-
-    Constraints:
-        - Never touches auth.users or Supabase Auth
-        - Only relies on the Auth0 subject (auth0_sub) and optional email
+    Resolve or create user in Vitalio_Identity.users by Auth0 subject.
+    Returns user_id_auth (auth0_sub) as the canonical user identifier.
     """
     if not auth0_sub:
         raise AuthError(
@@ -422,76 +416,29 @@ def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
             401,
         )
 
-    supabase_client = get_supabase_client()
-    if not supabase_client:
-        raise DatabaseError(
-            {
-                "code": "database_not_configured",
-                "message": "Database client not initialized. Please check SUPABASE_URL and SUPABASE_KEY in .env file",
-            },
-            500,
-        )
-
     try:
-        # 1) Try to find an existing user by auth0_sub
-        select_response = (
-            supabase_client.table("users")
-            .select("id")
-            .eq("auth0_sub", auth0_sub)
-            .execute()
-        )
+        identity_db = get_identity_db()
+        existing = identity_db.users.find_one({"user_id_auth": auth0_sub})
+        if existing:
+            return auth0_sub
 
-        if select_response.data:
-            user_id = select_response.data[0].get("id")
-            if user_id:
-                return user_id
-
-        # 2) Not found: attempt to create the user
-        insert_payload: Dict[str, Any] = {"auth0_sub": auth0_sub}
-        # email can be None; assume column allows NULL
-        insert_payload["email"] = email
-
+        # Create minimal user record if not found
         try:
-            insert_response = (
-                supabase_client.table("users")
-                .insert(insert_payload)
-                .execute()
-            )
-
-            if insert_response.data:
-                created_id = insert_response.data[0].get("id")
-                if created_id:
-                    return created_id
+            identity_db.users.insert_one({
+                "user_id_auth": auth0_sub,
+                "email": email,
+                "role": "patient",
+            })
         except Exception as insert_error:
-            # Handle potential race condition: another request may have created the row
             error_str = str(insert_error)
-            if "duplicate key value" not in error_str and "unique constraint" not in error_str:
+            if "duplicate key" not in error_str.lower() and "E11000" not in error_str:
                 raise
-
-        # 3) If insert failed due to unique constraint, re-select
-        retry_response = (
-            supabase_client.table("users")
-            .select("id")
-            .eq("auth0_sub", auth0_sub)
-            .execute()
-        )
-        if retry_response.data and retry_response.data[0].get("id"):
-            return retry_response.data[0]["id"]
-
-        # If we still don't have an id, something unexpected happened
-        raise DatabaseError(
-            {
-                "code": "user_resolution_failed",
-                "message": "Unable to resolve or create application user for given Auth0 subject",
-            },
-            500,
-        )
+            # Race condition: another request created the row
+        return auth0_sub
 
     except AuthError:
-        # Let AuthError bubble up unmodified
         raise
     except DatabaseError:
-        # Let DatabaseError bubble up unmodified
         raise
     except Exception as e:
         raise DatabaseError(
@@ -541,12 +488,12 @@ def requires_auth(f):
                 "message": "JWT missing user identifier in 'sub' claim"
             }, 401)
         
-        # Resolve or create internal application user (public.users)
+        # Resolve or create application user in identity DB
         user_id = get_or_create_user(auth0_sub, user_email)
         
         # Store authenticated user information in Flask request context
-        g.user_id_auth = auth0_sub          # Raw Auth0 subject (for logging/traces)
-        g.user_id = user_id                 # Internal UUID from public.users.id
+        g.user_id_auth = auth0_sub
+        g.user_id = user_id
         g.user_email = user_email
         g.jwt_payload = payload
         
@@ -2120,9 +2067,7 @@ def get_patient_data():
         AuthError: If authentication fails
         DatabaseError: If database queries fail
     """
-    # g.user_id contains the internal UUID from public.users.id
-    
-    device_id = get_device_id(g.user_id)
+    device_id = get_device_id(g.user_id_auth)
     
     if not device_id:
         raise DatabaseError({
