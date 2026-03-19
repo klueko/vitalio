@@ -11,16 +11,16 @@ import {
   Info,
 } from 'lucide-react'
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
+  LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { getPatientData, getMLModelInfo } from '../services/api'
 import PatientLayout from '../components/PatientLayout'
 
 const LEVEL_CONFIG = {
-  normal:   { color: '#22c55e', bg: '#f0fdf4', label: 'Normal',   Icon: CheckCircle2 },
-  warning:  { color: '#f59e0b', bg: '#fffbeb', label: 'Alerte',   Icon: AlertTriangle },
-  critical: { color: '#ef4444', bg: '#fef2f2', label: 'Critique', Icon: XCircle },
+  normal:   { color: '#047857', bg: '#ecfdf5', label: 'Normal',   Icon: CheckCircle2 },
+  warning:  { color: '#b45309', bg: '#fffbeb', label: 'Alerte',   Icon: AlertTriangle },
+  critical: { color: '#b91c1c', bg: '#fef2f2', label: 'Critique', Icon: XCircle },
 }
 
 const formatTime = (iso) => {
@@ -157,10 +157,10 @@ export default function PatientMLView() {
                   </article>
                 )
               })}
-              <article className="ml-kpi-card" style={{ borderColor: '#6366f1', background: '#eef2ff' }}>
-                <TrendingUp size={22} color="#6366f1" />
+              <article className="ml-kpi-card" style={{ borderColor: '#1d4ed8', background: '#eff6ff' }}>
+                <TrendingUp size={22} color="#1d4ed8" />
                 <div>
-                  <span className="ml-kpi-value" style={{ color: '#6366f1' }}>{mlData.total}</span>
+                  <span className="ml-kpi-value" style={{ color: '#1d4ed8' }}>{mlData.total}</span>
                   <span className="ml-kpi-label">Total analysé</span>
                 </div>
               </article>
@@ -184,8 +184,8 @@ export default function PatientMLView() {
                       <AreaChart data={mlData.scoreSeries} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#1d4ed8" stopOpacity={0.25} />
+                            <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -194,41 +194,10 @@ export default function PatientMLView() {
                         <Tooltip content={<CustomTooltip />} />
                         <Area
                           type="monotone" dataKey="score" name="Score ML"
-                          stroke="#6366f1" fill="url(#scoreGrad)" strokeWidth={2}
-                          dot={false} activeDot={{ r: 4, fill: '#6366f1' }}
+                          stroke="#1d4ed8" fill="url(#scoreGrad)" strokeWidth={2}
+                          dot={false} activeDot={{ r: 4, fill: '#1d4ed8' }}
                         />
                       </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </section>
-
-                {/* Distribution bar */}
-                <section className="ml-panel">
-                  <h2>Répartition des niveaux</h2>
-                  <div className="ml-chart-wrap">
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart
-                        data={[
-                          { name: 'Normal', value: mlData.counts.normal, fill: '#22c55e' },
-                          { name: 'Alerte', value: mlData.counts.warning, fill: '#f59e0b' },
-                          { name: 'Critique', value: mlData.counts.critical, fill: '#ef4444' },
-                        ]}
-                        margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                        <Tooltip />
-                        <Bar dataKey="value" name="Mesures" radius={[6, 6, 0, 0]}>
-                          {[
-                            { fill: '#22c55e' },
-                            { fill: '#f59e0b' },
-                            { fill: '#ef4444' },
-                          ].map((entry, i) => (
-                            <Cell key={i} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </section>
@@ -246,10 +215,10 @@ export default function PatientMLView() {
                         <YAxis yAxisId="score" orientation="right" domain={[0, 1]} tick={{ fontSize: 11 }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend />
-                        <Line yAxisId="vitals" type="monotone" dataKey="heart_rate" name="FC (bpm)" stroke="#ef4444" dot={false} strokeWidth={1.5} />
-                        <Line yAxisId="vitals" type="monotone" dataKey="spo2" name="SpO2 (%)" stroke="#3b82f6" dot={false} strokeWidth={1.5} />
-                        <Line yAxisId="vitals" type="monotone" dataKey="temperature" name="Temp (°C)" stroke="#f59e0b" dot={false} strokeWidth={1.5} />
-                        <Line yAxisId="score" type="monotone" dataKey="score" name="Score ML" stroke="#6366f1" dot={false} strokeWidth={2} strokeDasharray="5 3" />
+                        <Line yAxisId="vitals" type="monotone" dataKey="heart_rate" name="FC (bpm)" stroke="#b91c1c" dot={false} strokeWidth={1.5} />
+                        <Line yAxisId="vitals" type="monotone" dataKey="spo2" name="SpO2 (%)" stroke="#1d4ed8" dot={false} strokeWidth={1.5} />
+                        <Line yAxisId="vitals" type="monotone" dataKey="temperature" name="Temp (°C)" stroke="#b45309" dot={false} strokeWidth={1.5} />
+                        <Line yAxisId="score" type="monotone" dataKey="score" name="Score ML" stroke="#1d4ed8" dot={false} strokeWidth={2} strokeDasharray="5 3" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

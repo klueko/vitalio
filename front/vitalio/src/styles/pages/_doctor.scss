@@ -35,7 +35,7 @@
         .logo-icon {
             height: 2rem;
             width: 2rem;
-            background-color: #2563eb; // blue-600
+            background-color: #1d4ed8;
             border-radius: 0.5rem;
             display: flex;
             align-items: center;
@@ -51,7 +51,7 @@
             letter-spacing: -0.025em;
 
             span {
-                color: #2563eb;
+                color: #1d4ed8;
             }
         }
     }
@@ -72,9 +72,9 @@
         transition: background 0.2s, color 0.2s;
 
         &.active {
-            background-color: #2563eb; // blue-600
+            background-color: #1d4ed8;
             color: white;
-            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 2px 6px rgba(29, 78, 216, 0.2);
         }
 
         &:not(.active) {
@@ -105,11 +105,11 @@
             height: 2.5rem;
             width: 2.5rem;
             border-radius: 9999px;
-            background-color: #dbeafe; // blue-100
+            background-color: #dbeafe;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #1d4ed8; // blue-700
+            color: #1d4ed8;
             font-weight: 700;
             font-size: 0.875rem;
         }
@@ -139,7 +139,7 @@
             cursor: pointer;
 
             &:hover {
-                color: #ef4444;
+                color: #b91c1c;
             }
         }
     }
@@ -213,8 +213,8 @@
 
                 &:focus {
                     outline: none;
-                    border-color: #3b82f6;
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+                    border-color: #1d4ed8;
+                    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
                 }
             }
         }
@@ -254,7 +254,7 @@
             cursor: pointer;
 
             &:hover {
-                color: #2563eb;
+                color: #1d4ed8;
             }
         }
     }
@@ -366,7 +366,7 @@
         }
 
         svg {
-            color: #3b82f6;
+            color: #1d4ed8;
         }
     }
 
@@ -397,7 +397,7 @@
     input {
         width: 1rem;
         height: 1rem;
-        accent-color: #3b82f6;
+        accent-color: #1d4ed8;
     }
 }
 
@@ -435,14 +435,14 @@
     border: none;
 
     &.doctor-btn-primary {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
         color: white;
-        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 1px 3px rgba(29, 78, 216, 0.2);
 
         &:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.35);
+            box-shadow: 0 2px 6px rgba(29, 78, 216, 0.25);
         }
     }
 
@@ -477,7 +477,7 @@
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #22c55e;
+        background: #047857;
         animation: pulse-success 2s ease-in-out infinite;
     }
 }
@@ -571,7 +571,7 @@
         width: 32px;
         height: 32px;
         border: 3px solid #e2e8f0;
-        border-top-color: #3b82f6;
+        border-top-color: #1d4ed8;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
@@ -869,7 +869,7 @@
                             }
 
                             .dot.green {
-                                background-color: #22c55e;
+                                background-color: #047857;
                             }
                         }
                     }

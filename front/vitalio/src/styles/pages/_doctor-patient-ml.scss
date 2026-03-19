@@ -138,6 +138,12 @@
   }
 }
 
+.pml-panel-sub {
+  margin: -0.25rem 0 0.75rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
 .pml-loading {
   text-align: center;
   color: #64748b;
@@ -175,6 +181,62 @@
     accent-color: $primary;
     cursor: pointer;
   }
+}
+
+// ── Synthèse actuelle ──
+.pml-current-synthesis {
+  .pml-current-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+}
+
+.pml-current-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.pml-current-icon {
+  flex-shrink: 0;
+}
+
+.pml-current-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pml-current-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.pml-current-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.pml-current-status {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  width: fit-content;
+  margin-top: 0.15rem;
 }
 
 // ── Stats row ──
@@ -302,7 +364,7 @@
 
 .pml-sig-badge {
   font-size: 0.68rem;
-  color: #22c55e;
+  color: #047857;
   font-weight: 700;
   padding: 0.1rem 0.4rem;
   background: #f0fdf4;
@@ -374,7 +436,7 @@
 
   &--warning {
     background: #fffbeb;
-    color: #f59e0b;
+    color: #b45309;
   }
 }
 
@@ -424,7 +486,7 @@
   }
 
   &--critical {
-    border-left: 3px solid #ef4444;
+    border-left: 3px solid #b91c1c;
     background: #fef2f2;
   }
 }

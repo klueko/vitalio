@@ -101,7 +101,7 @@ export default function InviteAccept() {
     return (
       <div className="login-container">
         <div className="login-card animate-fade-in">
-          <CheckCircle size={48} style={{ color: '#16a34a', marginBottom: '16px' }} />
+          <CheckCircle size={48} style={{ color: '#047857', marginBottom: '16px' }} />
           <h2>Invitation acceptée</h2>
           <p>Votre compte est maintenant associé à votre médecin. Redirection...</p>
         </div>

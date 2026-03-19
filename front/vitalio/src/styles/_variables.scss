@@ -1,10 +1,10 @@
-// Colors
-$primary: #3b82f6;
-$secondary: #8b5cf6;
-$accent: #f43f5e;
-$success: #10b981;
-$warning: #f59e0b;
-$danger: #ef4444;
+// Colors - palette sobre et professionnelle pour contexte médical
+$primary: #1d4ed8;
+$secondary: #475569;
+$accent: #0f766e;
+$success: #047857;
+$warning: #b45309;
+$danger: #b91c1c;
 $dark: #1e293b;
 $light: #f8fafc;
 
@@ -14,16 +14,16 @@ $dark-light-30: #64748b;
 $dark-light-40: #94a3b8;
 
 // Backgrounds
-$bg-app: #f0f4f8;
+$bg-app: #f8fafc;
 $bg-card: #ffffff;
 $bg-glass: rgba(255, 255, 255, 0.7);
 
-// Shadows
-$shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-$shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-$shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-$shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-$shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+// Shadows - plus discrets
+$shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+$shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+$shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+$shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+$shadow-glow: 0 0 16px rgba(29, 78, 216, 0.08);
 
 // Animation
 $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

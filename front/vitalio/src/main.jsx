@@ -38,7 +38,7 @@ createRoot(document.getElementById('root')).render(
         <App />
       </Auth0Provider>
     ) : (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', fontFamily: 'system-ui, sans-serif', padding: '24px' }}>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', fontFamily: "'Source Sans 3', system-ui, sans-serif", padding: '24px' }}>
         <div style={{ maxWidth: '560px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}>
           <h1 style={{ marginTop: 0, marginBottom: '12px' }}>Configuration Auth0 manquante</h1>
           <p style={{ marginTop: 0 }}>Crée un fichier <code>.env</code> dans <code>front/vitalio</code> avec les variables suivantes :</p>

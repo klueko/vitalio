@@ -27,7 +27,7 @@
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.4;
+    opacity: 0.22;
     animation: float 20s ease-in-out infinite;
 
     &.blob-1 {
@@ -164,7 +164,7 @@
 .login-title {
     font-size: 2.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, $primary, $success);
+    background: linear-gradient(135deg, $primary, $accent);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -315,14 +315,14 @@
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(135deg, $success, $primary);
+        background: linear-gradient(135deg, rgba($primary, 0.95), rgba($primary, 0.85));
         opacity: 0;
         transition: opacity 0.3s ease;
     }
 
     &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba($primary, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px -2px rgba($primary, 0.25);
 
         &::before {
             opacity: 1;

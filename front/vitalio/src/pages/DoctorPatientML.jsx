@@ -20,6 +20,8 @@ import {
   CalendarDays,
   Info,
   Layers,
+  Clock,
+  Crosshair,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -34,37 +36,37 @@ const VITAL_CONFIG = {
   heart_rate: {
     label: 'Fréquence cardiaque',
     unit: 'bpm',
-    color: '#ef4444',
-    gradient: ['#fecaca', '#ef4444'],
+    color: '#b91c1c',
+    gradient: ['#fecaca', '#b91c1c'],
     Icon: Heart,
   },
   spo2: {
     label: 'SpO₂',
     unit: '%',
-    color: '#3b82f6',
-    gradient: ['#bfdbfe', '#3b82f6'],
+    color: '#1d4ed8',
+    gradient: ['#bfdbfe', '#1d4ed8'],
     Icon: Wind,
   },
   temperature: {
     label: 'Température',
     unit: '°C',
-    color: '#16a34a',
-    gradient: ['#bbf7d0', '#16a34a'],
+    color: '#047857',
+    gradient: ['#bbf7d0', '#047857'],
     Icon: Thermometer,
   },
 }
 
 const LEVEL_COLORS = {
-  normal: '#22c55e',
-  warning: '#f59e0b',
-  critical: '#ef4444',
+  normal: '#047857',
+  warning: '#b45309',
+  critical: '#b91c1c',
 }
 
 const RISK_CONFIG = {
-  minimal:  { color: '#22c55e', bg: '#f0fdf4', label: 'Risque minimal' },
-  low:      { color: '#3b82f6', bg: '#eff6ff', label: 'Risque faible' },
-  moderate: { color: '#f59e0b', bg: '#fffbeb', label: 'Risque modéré' },
-  high:     { color: '#ef4444', bg: '#fef2f2', label: 'Risque élevé' },
+  minimal:  { color: '#047857', bg: '#ecfdf5', label: 'Risque minimal' },
+  low:      { color: '#1d4ed8', bg: '#eff6ff', label: 'Risque faible' },
+  moderate: { color: '#b45309', bg: '#fffbeb', label: 'Risque modéré' },
+  high:     { color: '#b91c1c', bg: '#fef2f2', label: 'Risque élevé' },
 }
 
 const formatTime = (iso) => {
@@ -97,8 +99,8 @@ function AnomalyDot(props) {
   if (!payload?.is_anomaly) return <circle cx={cx} cy={cy} r={3} fill={color} />
   return (
     <g>
-      <circle cx={cx} cy={cy} r={7} fill="#ef4444" fillOpacity={0.2} />
-      <circle cx={cx} cy={cy} r={4} fill="#ef4444" stroke="#fff" strokeWidth={1.5} />
+      <circle cx={cx} cy={cy} r={7} fill="#b91c1c" fillOpacity={0.2} />
+      <circle cx={cx} cy={cy} r={4} fill="#b91c1c" stroke="#fff" strokeWidth={1.5} />
     </g>
   )
 }
@@ -138,7 +140,7 @@ export default function DoctorPatientML() {
       const data = await getPatientMLAnalysis(token, patientId, {
         days,
         include_forecast: true,
-        forecast_horizon: 8,
+        forecast_horizon: 24,
       })
       setAnalysis(data)
     } catch (e) {
@@ -210,6 +212,62 @@ export default function DoctorPatientML() {
 
   const correlations = analysis?.correlations || {}
 
+  const latestValues = useMemo(() => {
+    if (!analysis?.vitals) return []
+    return Object.entries(VITAL_CONFIG).map(([feat, vc]) => {
+      const info = analysis.vitals[feat]
+      const series = info?.series || []
+      const last = series.length > 0 ? series[series.length - 1] : null
+      const value = last?.value ?? last?.[feat]
+      const range = info?.physiological_range
+      let status = 'ok'
+      if (value != null && range && range.length >= 2) {
+        const [lo, hi] = range
+        if (value < lo || value > hi) status = 'alerte'
+        else if (feat === 'spo2' && value < 95) status = 'attention'
+        else if (feat === 'heart_rate' && (value < lo + 5 || value > hi - 5)) status = 'attention'
+      }
+      return { feat, label: vc.label, unit: vc.unit, value, status, color: vc.color, Icon: vc.Icon }
+    }).filter((v) => v.value != null)
+  }, [analysis])
+
+  const hourlyDistribution = useMemo(() => {
+    if (!analysis?.vitals) return []
+    const seen = new Set()
+    const byHour = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}h`, count: 0 }))
+    Object.values(analysis.vitals).forEach((info) => {
+      (info?.series || []).forEach((pt) => {
+        const ts = pt.timestamp ? new Date(pt.timestamp) : null
+        if (ts) {
+          const key = `${ts.getTime()}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            byHour[ts.getHours()].count++
+          }
+        }
+      })
+    })
+    return byHour
+  }, [analysis])
+
+  const last24hMultiVital = useMemo(() => {
+    if (!analysis?.vitals) return []
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000
+    const points = {}
+    ;['heart_rate', 'spo2', 'temperature'].forEach((feat) => {
+      const series = analysis.vitals?.[feat]?.series || []
+      series.forEach((pt) => {
+        const ts = pt.timestamp ? new Date(pt.timestamp).getTime() : 0
+        if (ts >= cutoff) {
+          const key = Math.floor(ts / (30 * 60 * 1000)) * (30 * 60 * 1000)
+          if (!points[key]) points[key] = { label: new Date(key).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }
+          points[key][feat] = pt.value ?? pt[feat]
+        }
+      })
+    })
+    return Object.entries(points).sort((a, b) => a[0] - b[0]).map(([, v]) => v)
+  }, [analysis])
+
   const vitalInfo = analysis?.vitals?.[activeVital] || {}
   const stats = vitalInfo.statistics || {}
   const trend = vitalInfo.trend || {}
@@ -277,12 +335,77 @@ export default function DoctorPatientML() {
                 value={analysis.anomaly_summary?.total ?? 0}
                 unit=""
                 icon={AlertTriangle}
-                color="#f59e0b"
+                color="#b45309"
                 subtitle={`${analysis.anomaly_summary?.by_status?.validated ?? 0} confirmées · ${analysis.anomaly_summary?.by_status?.pending ?? 0} en attente`}
               />
             </section>
 
-            {}
+            {/* Synthèse actuelle des constantes vitales */}
+            {latestValues.length > 0 && (
+              <section className="pml-panel pml-current-synthesis">
+                <h2><Crosshair size={18} /> Synthèse actuelle</h2>
+                <p className="pml-panel-sub">Dernières valeurs mesurées avec statut clinique</p>
+                <div className="pml-current-cards">
+                  {latestValues.map(({ feat, label, unit, value, status, color, Icon }) => {
+                    const statusCfg = status === 'alerte' ? { bg: '#fef2f2', color: '#b91c1c', label: 'Hors norme' }
+                      : status === 'attention' ? { bg: '#fffbeb', color: '#b45309', label: 'À surveiller' }
+                      : { bg: '#ecfdf5', color: '#047857', label: 'Dans la norme' }
+                    return (
+                      <div key={feat} className="pml-current-card" style={{ borderColor: color }}>
+                        <div className="pml-current-icon" style={{ color }}><Icon size={24} /></div>
+                        <div className="pml-current-body">
+                          <span className="pml-current-value">{typeof value === 'number' ? value.toFixed(value >= 10 ? 0 : 1) : value}{unit}</span>
+                          <span className="pml-current-label">{label}</span>
+                          <span className="pml-current-status" style={{ background: statusCfg.bg, color: statusCfg.color }}>{statusCfg.label}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Répartition horaire des mesures */}
+            {hourlyDistribution.some((h) => h.count > 0) && (
+              <section className="pml-panel">
+                <h2><Clock size={18} /> Répartition horaire des mesures</h2>
+                <p className="pml-panel-sub">Périodes de surveillance et couverture temporelle</p>
+                <div className="pml-chart-wrap">
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={hourlyDistribution} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={1} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="count" name="Nb mesures" fill="#1d4ed8" radius={[3, 3, 0, 0]} fillOpacity={0.8} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
+
+            {/* Vue multivariable dernières 24h */}
+            {last24hMultiVital.length > 0 && (
+              <section className="pml-panel">
+                <h2><LineChartIcon size={18} /> Évolution des 3 constantes (24h)</h2>
+                <p className="pml-panel-sub">FC, SpO₂ et température sur les dernières 24 heures</p>
+                <div className="pml-chart-wrap">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={last24hMultiVital} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Line type="monotone" dataKey="heart_rate" name="FC (bpm)" stroke="#b91c1c" strokeWidth={2} dot={false} connectNulls />
+                      <Line type="monotone" dataKey="spo2" name="SpO₂ (%)" stroke="#1d4ed8" strokeWidth={2} dot={false} connectNulls />
+                      <Line type="monotone" dataKey="temperature" name="Temp (°C)" stroke="#047857" strokeWidth={2} dot={false} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
+
             <div className="pml-vital-tabs">
               {Object.entries(VITAL_CONFIG).map(([feat, vc]) => (
                 <button
@@ -374,7 +497,7 @@ export default function DoctorPatientML() {
                         <>
                           <Line type="monotone" dataKey="ma_6" name="Moyenne 6h" stroke="#a855f7" strokeWidth={1} strokeDasharray="4 2" dot={false} connectNulls />
                           <Line type="monotone" dataKey="ma_12" name="Moyenne 12h" stroke="#06b6d4" strokeWidth={1} strokeDasharray="6 3" dot={false} connectNulls />
-                          <Line type="monotone" dataKey="ma_24" name="Moyenne 24h" stroke="#f59e0b" strokeWidth={1} strokeDasharray="8 4" dot={false} connectNulls />
+                          <Line type="monotone" dataKey="ma_24" name="Moyenne 24h" stroke="#b45309" strokeWidth={1} strokeDasharray="8 4" dot={false} connectNulls />
                         </>
                       )}
 
@@ -387,9 +510,9 @@ export default function DoctorPatientML() {
                 {}
                 <div className="pml-trend-summary">
                   <div className="pml-trend-direction">
-                    {trend.label === 'increasing' && <TrendingUp size={20} color="#f59e0b" />}
-                    {trend.label === 'decreasing' && <TrendingDown size={20} color="#3b82f6" />}
-                    {trend.label === 'stable' && <Activity size={20} color="#22c55e" />}
+                    {trend.label === 'increasing' && <TrendingUp size={20} color="#b45309" />}
+                    {trend.label === 'decreasing' && <TrendingDown size={20} color="#1d4ed8" />}
+                    {trend.label === 'stable' && <Activity size={20} color="#047857" />}
                     <span>
                       {trend.label === 'stable' ? 'Stable' : trend.label === 'increasing' ? 'En hausse' : 'En baisse'}
                       {' '}({({ negligible: 'négligeable', mild: 'légère', moderate: 'modérée', strong: 'marquée' })[trend.strength] || trend.strength})
@@ -431,29 +554,29 @@ export default function DoctorPatientML() {
                     <AreaChart data={mlScoreData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="mlScoreGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#1d4ed8" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="timestamp" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                       <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} />
                       <Tooltip content={<CustomTooltip />} />
-                      <ReferenceArea y1={0} y2={0.45} fill="#22c55e" fillOpacity={0.06} />
-                      <ReferenceArea y1={0.45} y2={0.70} fill="#f59e0b" fillOpacity={0.06} />
-                      <ReferenceArea y1={0.70} y2={1} fill="#ef4444" fillOpacity={0.06} />
-                      <ReferenceLine y={0.45} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: 'Surveillance', fontSize: 10, fill: '#f59e0b' }} />
-                      <ReferenceLine y={0.70} stroke="#ef4444" strokeDasharray="4 4" label={{ value: 'Critique', fontSize: 10, fill: '#ef4444' }} />
+                      <ReferenceArea y1={0} y2={0.45} fill="#047857" fillOpacity={0.06} />
+                      <ReferenceArea y1={0.45} y2={0.70} fill="#b45309" fillOpacity={0.06} />
+                      <ReferenceArea y1={0.70} y2={1} fill="#b91c1c" fillOpacity={0.06} />
+                      <ReferenceLine y={0.45} stroke="#b45309" strokeDasharray="4 4" label={{ value: 'Surveillance', fontSize: 10, fill: '#b45309' }} />
+                      <ReferenceLine y={0.70} stroke="#b91c1c" strokeDasharray="4 4" label={{ value: 'Critique', fontSize: 10, fill: '#b91c1c' }} />
                       <Area
                         type="monotone"
                         dataKey="score"
                         name="Indice de risque"
-                        stroke="#6366f1"
+                        stroke="#1d4ed8"
                         fill="url(#mlScoreGrad)"
                         strokeWidth={2}
                         dot={(props) => {
                           const { cx, cy, payload } = props
-                          const c = LEVEL_COLORS[payload?.level] || '#6366f1'
+                          const c = LEVEL_COLORS[payload?.level] || '#1d4ed8'
                           const r = payload?.level === 'critical' ? 5 : payload?.level === 'warning' ? 4 : 2
                           return <circle cx={cx} cy={cy} r={r} fill={c} stroke="#fff" strokeWidth={1} />
                         }}
@@ -516,7 +639,7 @@ export default function DoctorPatientML() {
                     <div className="pml-forecast-summary-badges">
                       <span className="pml-badge" style={{
                         background: analysis.forecast.confidence_score >= 60 ? '#f0fdf4' : '#fffbeb',
-                        color: analysis.forecast.confidence_score >= 60 ? '#22c55e' : '#f59e0b',
+                        color: analysis.forecast.confidence_score >= 60 ? '#047857' : '#b45309',
                       }}>
                         <Gauge size={13} /> {analysis.forecast.confidence_score}/100
                       </span>
@@ -553,7 +676,7 @@ export default function DoctorPatientML() {
                         <h3><vc.Icon size={16} /> {vc.label} ({vc.unit})</h3>
                         <span className="pml-badge" style={{
                           background: fInfo.confidence_score >= 60 ? '#f0fdf4' : '#fffbeb',
-                          color: fInfo.confidence_score >= 60 ? '#22c55e' : '#f59e0b',
+                          color: fInfo.confidence_score >= 60 ? '#047857' : '#b45309',
                         }}>
                           {fInfo.confidence_score}/100
                         </span>
@@ -568,9 +691,9 @@ export default function DoctorPatientML() {
                           {ranges && <ReferenceLine y={ranges[1]} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: 'Seuil haut', fontSize: 10, fill: '#94a3b8' }} />}
                           <ReferenceLine
                             x={forecastData[forecastSplit - 1]?.label}
-                            stroke="#6366f1"
+                            stroke="#1d4ed8"
                             strokeDasharray="6 3"
-                            label={{ value: 'Prévision →', fontSize: 10, fill: '#6366f1' }}
+                            label={{ value: 'Prévision →', fontSize: 10, fill: '#1d4ed8' }}
                           />
                           <Area
                             dataKey={`${feat}_upper`}
@@ -661,15 +784,15 @@ export default function DoctorPatientML() {
               <section className="pml-panel">
                 <h2><ShieldAlert size={18} /> Historique des alertes cliniques</h2>
                 <div className="pml-anomaly-summary-grid">
-                  <div className="pml-anomaly-count-card" style={{ borderColor: '#f59e0b' }}>
+                  <div className="pml-anomaly-count-card" style={{ borderColor: '#b45309' }}>
                     <span className="pml-count">{analysis.anomaly_summary.total}</span>
                     <span>Total</span>
                   </div>
-                  <div className="pml-anomaly-count-card" style={{ borderColor: '#6366f1' }}>
+                  <div className="pml-anomaly-count-card" style={{ borderColor: '#1d4ed8' }}>
                     <span className="pml-count">{analysis.anomaly_summary.by_status?.pending ?? 0}</span>
                     <span>En attente</span>
                   </div>
-                  <div className="pml-anomaly-count-card" style={{ borderColor: '#22c55e' }}>
+                  <div className="pml-anomaly-count-card" style={{ borderColor: '#047857' }}>
                     <span className="pml-count">{analysis.anomaly_summary.by_status?.validated ?? 0}</span>
                     <span>Validées</span>
                   </div>
@@ -699,7 +822,7 @@ export default function DoctorPatientML() {
                               <td>{formatTime(a.timestamp)}</td>
                               <td>{(a.score ?? 0).toFixed(3)}</td>
                               <td>
-                                <span className="pml-level-dot" style={{ background: LEVEL_COLORS[a.level] || '#6366f1' }} />
+                                <span className="pml-level-dot" style={{ background: LEVEL_COLORS[a.level] || '#1d4ed8' }} />
                                 {a.level}
                               </td>
                               <td>{a.status}</td>

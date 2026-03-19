@@ -1,0 +1,98 @@
+"""
+ML scoring pipeline integration.
+"""
+import logging
+from datetime import datetime, timezone
+from typing import Dict, Any
+
+from pymongo.errors import PyMongoError
+
+import ml_module
+from database import get_medical_db, get_identity_db
+
+logger = logging.getLogger(__name__)
+
+
+def run_ml_scoring(device_id: str, measurement_doc: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Score one measurement through the ML module, persist the audit decision,
+    create an anomaly event if critical, and enrich the measurement document.
+    Returns the ml_result dict.
+    """
+    ml_result = ml_module.score_measurement(measurement_doc)
+
+    is_anomaly = ml_result.get("ml_is_anomaly", False)
+    ml_level = ml_result.get("ml_level")
+
+    measurement_update = {
+        "ml_score": ml_result["ml_score"],
+        "ml_level": ml_level,
+        "ml_model_version": ml_result["ml_model_version"],
+        "ml_contributing_variables": ml_result.get("ml_contributing_variables", []),
+        "ml_is_anomaly": is_anomaly,
+        "ml_criticality": ml_result.get("ml_criticality", "normal"),
+        "ml_recommended_action": ml_result.get("ml_recommended_action"),
+        "ml_anomaly_status": "pending" if is_anomaly and ml_level == "critical" else "none",
+    }
+
+    suggestion = None
+    if not ml_result.get("ml_skipped"):
+        suggestion = {
+            "recommended_action": ml_result.get("ml_recommended_action"),
+            "clinical_reasoning": ml_result.get("ml_clinical_reasoning", []),
+            "urgency": ml_result.get("ml_urgency", "routine"),
+        }
+
+        decision_doc = {
+            "measurement_id": measurement_doc.get("_id"),
+            "device_id": device_id,
+            "measured_at": measurement_doc.get("measured_at"),
+            "anomaly_score": ml_result["ml_score"],
+            "anomaly_level": ml_level,
+            "model_version": ml_result["ml_model_version"],
+            "contributing_variables": ml_result["ml_contributing_variables"],
+            "recommended_action": suggestion["recommended_action"],
+            "clinical_reasoning": suggestion["clinical_reasoning"],
+            "urgency": suggestion["urgency"],
+            "processed_at": datetime.now(timezone.utc),
+        }
+        try:
+            get_medical_db().ml_decisions.insert_one(decision_doc)
+        except PyMongoError:
+            logger.warning("Failed to insert ml_decision for device %s", device_id)
+
+    user_id_auth = None
+    try:
+        mapping = get_identity_db().users_devices.find_one({"device_id": device_id})
+        if mapping:
+            user_id_auth = mapping.get("user_id_auth")
+    except PyMongoError:
+        pass
+
+    anomaly_event = ml_module.build_anomaly_event(
+        device_id=device_id,
+        user_id_auth=user_id_auth,
+        measurement_id=measurement_doc.get("_id"),
+        measurement=measurement_doc,
+        ml_result=ml_result,
+        suggestion=suggestion,
+    )
+    if anomaly_event:
+        try:
+            insert_result = get_medical_db().ml_anomalies.insert_one(anomaly_event)
+            anomaly_oid = insert_result.inserted_id
+            measurement_update["ml_anomaly_id"] = anomaly_oid
+            measurement_update["ml_anomaly_status"] = "pending"
+            logger.info("ML anomaly event created for device %s (score=%.3f)", device_id, ml_result["ml_score"])
+        except PyMongoError:
+            logger.warning("Failed to insert ml_anomaly for device %s", device_id)
+
+    try:
+        get_medical_db().measurements.update_one(
+            {"_id": measurement_doc.get("_id")},
+            {"$set": measurement_update}
+        )
+    except PyMongoError:
+        logger.warning("Failed to update measurement with ML fields for device %s", device_id)
+
+    return ml_result

@@ -102,7 +102,7 @@ export default function CaregiverInviteAccept() {
     return (
       <div className="login-container">
         <div className="login-card animate-fade-in">
-          <CheckCircle size={48} style={{ color: '#16a34a', marginBottom: '16px' }} />
+          <CheckCircle size={48} style={{ color: '#047857', marginBottom: '16px' }} />
           <h2>Invitation acceptée</h2>
           <p>Vous êtes maintenant aidant de votre proche. Redirection vers votre tableau de bord...</p>
         </div>

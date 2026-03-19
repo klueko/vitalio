@@ -69,8 +69,8 @@
     overflow: hidden;
 
     &:hover {
-        transform: translateY(-5px);
-        box-shadow: $shadow-glow;
+        transform: translateY(-3px);
+        box-shadow: $shadow-md;
     }
 
     .icon-wrapper {

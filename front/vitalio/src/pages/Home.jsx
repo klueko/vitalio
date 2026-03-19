@@ -122,7 +122,7 @@ export default function Home() {
                     title="Médecin"
                     name="Dr. Sophie"
                     description="Tableau de bord. Données vitales."
-                    color="#3b82f6"
+                    color="#1d4ed8"
                     path="/doctor"
                 />
                 <PersonaCard

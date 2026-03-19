@@ -168,8 +168,8 @@ export default function DoctorPatientDetail() {
                       <YAxis />
                       <Tooltip />
                       <Line type="monotone" dataKey="spo2" stroke="#2563eb" dot={false} />
-                      <Line type="monotone" dataKey="heart_rate" stroke="#ef4444" dot={false} />
-                      <Line type="monotone" dataKey="temperature" stroke="#16a34a" dot={false} />
+                      <Line type="monotone" dataKey="heart_rate" stroke="#b91c1c" dot={false} />
+                      <Line type="monotone" dataKey="temperature" stroke="#047857" dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

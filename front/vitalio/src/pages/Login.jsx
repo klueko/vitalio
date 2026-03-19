@@ -63,7 +63,7 @@ export default function Login() {
         isLoading,
         loginWithRedirect,
         user,
-        getIdTokenClaims,
+        getAccessTokenSilently,
         error: auth0Error,
     } = useAuth0();
 
