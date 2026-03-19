@@ -10,14 +10,27 @@ const STEPS = [
   'Résultat',
 ]
 
-const createSimulatedMeasurement = () => ({
-  source: 'simulation',
-  measured_at: new Date().toISOString(),
-  heart_rate: 64 + Math.round(Math.random() * 30),
-  spo2: 94 + Math.round(Math.random() * 5),
-  temperature: Number((36 + Math.random() * 1.8).toFixed(1)),
-  signal_quality: 75 + Math.round(Math.random() * 20),
-})
+const createSimulatedMeasurement = (simulateCritical = false) => {
+  if (simulateCritical) {
+    // Alerte critique FC : tachycardie sévère (165 bpm) ou bradycardie (35 bpm)
+    return {
+      source: 'simulation',
+      measured_at: new Date().toISOString(),
+      heart_rate: 165,
+      spo2: 96,
+      temperature: 36.5,
+      signal_quality: 85,
+    }
+  }
+  return {
+    source: 'simulation',
+    measured_at: new Date().toISOString(),
+    heart_rate: 64 + Math.round(Math.random() * 30),
+    spo2: 94 + Math.round(Math.random() * 5),
+    temperature: Number((36 + Math.random() * 1.8).toFixed(1)),
+    signal_quality: 75 + Math.round(Math.random() * 20),
+  }
+}
 
 export default function PatientMeasurement() {
   const navigate = useNavigate()
@@ -26,6 +39,7 @@ export default function PatientMeasurement() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [simulateCritical, setSimulateCritical] = useState(false)
 
   const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step])
 
@@ -36,7 +50,7 @@ export default function PatientMeasurement() {
       setSubmitting(true)
       setError('')
       const token = await getAccessTokenSilently()
-      const payload = createSimulatedMeasurement()
+      const payload = createSimulatedMeasurement(simulateCritical)
       const response = await submitPatientMeasurement(token, payload)
       setResult(response.measurement || payload)
       nextStep()
@@ -87,6 +101,14 @@ export default function PatientMeasurement() {
           <section className="panel">
             <h2>Lancez la mesure</h2>
             <p>Appuyez pour simuler (ou transmettre) une mesure vers la plateforme.</p>
+            <label className="simulate-critical-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+              <input
+                type="checkbox"
+                checked={simulateCritical}
+                onChange={(e) => setSimulateCritical(e.target.checked)}
+              />
+              <span>Simuler une alerte critique (FC 165 bpm)</span>
+            </label>
             <button className="primary-button" onClick={runMeasurement} disabled={submitting}>
               {submitting ? (
                 <>
@@ -123,6 +145,7 @@ export default function PatientMeasurement() {
                   setStep(0)
                   setResult(null)
                   setError('')
+                  setSimulateCritical(false)
                 }}
               >
                 Nouvelle mesure

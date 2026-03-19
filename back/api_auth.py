@@ -1,8 +1,8 @@
 """
 JWT authentication, role resolution, and decorators for the VitalIO API.
 """
-import hashlib
 import logging
+import re
 from functools import wraps
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
@@ -13,7 +13,7 @@ from flask import request, g
 from jose import jwt, JWTError
 
 from config import AUTH0_DOMAIN, API_AUDIENCE, AUTH0_ALGORITHMS, AUTH0_ROLE_CLAIM
-from database import get_identity_db
+from database import get_identity_db, get_medical_db
 from exceptions import AuthError, DatabaseError
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,35 @@ def verify_jwt(token: str) -> Dict[str, Any]:
         }, 401)
 
 
-def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
+def _extract_profile_from_jwt(jwt_payload: Dict[str, Any], user_id_auth: str) -> Dict[str, Any]:
+    """Extract user profile fields from JWT payload (Auth0 claims)."""
+    ns = "https://vitalio.app/"
+
+    def claim(key):
+        val = jwt_payload.get(f"{ns}{key}") or jwt_payload.get(key) or ""
+        return str(val) if val is not None else ""
+
+    first_name = (claim("given_name") or "")[:64] or None
+    last_name = (claim("family_name") or "")[:64] or None
+    email = (claim("email") or "").strip()[:256] or None
+    picture = (claim("picture") or "")[:512] or None
+    display_name = (
+        f"{first_name or ''} {last_name or ''}".strip()
+        or claim("name")
+        or claim("email")
+        or (jwt_payload.get("nickname") or "")
+        or user_id_auth
+    )[:128]
+    return {
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "display_name": display_name,
+        "picture": picture,
+    }
+
+
+def get_or_create_user(auth0_sub: str, jwt_payload: Optional[Dict[str, Any]] = None) -> str:
     """Resolve or create user in Vitalio_Identity.users. Returns user_id_auth."""
     if not auth0_sub:
         raise AuthError({"code": "invalid_token", "message": "Missing Auth0 subject"}, 401)
@@ -117,10 +145,22 @@ def get_or_create_user(auth0_sub: str, email: Optional[str]) -> str:
         identity_db = get_identity_db()
         if identity_db.users.find_one({"user_id_auth": auth0_sub}):
             return auth0_sub
+        profile = {}
+        if jwt_payload:
+            profile = _extract_profile_from_jwt(jwt_payload, auth0_sub)
+        email = profile.get("email") or (jwt_payload.get("email") if jwt_payload else None)
+        doc = {
+            "user_id_auth": auth0_sub,
+            "email": email,
+            "role": "patient",
+            "display_name": profile.get("display_name") or auth0_sub,
+            "first_name": profile.get("first_name"),
+            "last_name": profile.get("last_name"),
+            "picture": profile.get("picture"),
+            "created_at": datetime.now(timezone.utc),
+        }
         try:
-            identity_db.users.insert_one({
-                "user_id_auth": auth0_sub, "email": email, "role": "patient",
-            })
+            identity_db.users.insert_one(doc)
         except Exception as e:
             if "duplicate key" not in str(e).lower() and "E11000" not in str(e):
                 raise
@@ -156,6 +196,45 @@ def get_user_role(user_id_auth: str) -> Optional[str]:
     return role
 
 
+def _get_next_sim_esp32_device_id() -> str:
+    """Return next available SIM-ESP32-XXX device ID (e.g. SIM-ESP32-003).
+    Scans users_devices and measurements to avoid reusing existing IDs.
+    """
+    pattern = re.compile(r"^SIM-ESP32-(\d+)$", re.IGNORECASE)
+    numbers = [0]
+
+    try:
+        for device_id in get_identity_db().users_devices.distinct("device_id"):
+            if device_id:
+                m = pattern.match(str(device_id))
+                if m:
+                    numbers.append(int(m.group(1)))
+        for device_id in get_medical_db().measurements.distinct("device_id"):
+            if device_id:
+                m = pattern.match(str(device_id))
+                if m:
+                    numbers.append(int(m.group(1)))
+    except Exception as e:
+        logger.warning("Error scanning existing device IDs: %s", e)
+
+    next_num = max(numbers) + 1
+    return f"SIM-ESP32-{next_num:03d}"
+
+
+def _ensure_patient_device(user_id_auth: str) -> None:
+    """Ensure a patient has a device in users_devices. Creates one if missing."""
+    identity_db = get_identity_db()
+    if identity_db.users_devices.find_one({"user_id_auth": user_id_auth}):
+        return
+    device_id = _get_next_sim_esp32_device_id()
+    identity_db.users_devices.update_one(
+        {"user_id_auth": user_id_auth},
+        {"$set": {"user_id_auth": user_id_auth, "device_id": device_id}},
+        upsert=True,
+    )
+    logger.info("Auto-assigned device for patient: %s -> %s", user_id_auth, device_id)
+
+
 def _provision_user_if_new(user_id_auth: str, jwt_payload: Dict[str, Any]) -> Optional[str]:
     """JIT provision new patient. Returns provisioned role or None. Called lazily by get_current_user_role."""
     if get_identity_db().users.find_one({"user_id_auth": user_id_auth}):
@@ -165,9 +244,9 @@ def _provision_user_if_new(user_id_auth: str, jwt_payload: Dict[str, Any]) -> Op
     def claim(key):
         return jwt_payload.get(f"{ns}{key}") or jwt_payload.get(key) or ""
 
-    display_name = claim("name") or claim("email") or jwt_payload.get("nickname") or user_id_auth
     first_name = claim("given_name")[:64]
     last_name = claim("family_name")[:64]
+    display_name = f"{first_name} {last_name}".strip() or claim("name") or claim("email") or jwt_payload.get("nickname") or user_id_auth
     email = claim("email")[:256]
     picture = claim("picture")[:512]
     phone = claim("phone_number")[:32] or None
@@ -195,7 +274,7 @@ def _provision_user_if_new(user_id_auth: str, jwt_payload: Dict[str, Any]) -> Op
             }},
             upsert=True,
         )
-        device_id = f"SIM-PAT-{hashlib.sha256(user_id_auth.encode()).hexdigest()[:12].upper()}"
+        device_id = _get_next_sim_esp32_device_id()
         get_identity_db().users_devices.update_one(
             {"user_id_auth": user_id_auth},
             {"$set": {"user_id_auth": user_id_auth, "device_id": device_id}},
@@ -222,9 +301,13 @@ def get_current_user_role() -> str:
     if current_user_id_auth:
         db_role = get_user_role(current_user_id_auth)
         if db_role:
+            if db_role == "patient":
+                _ensure_patient_device(current_user_id_auth)
             return db_role
         provisioned = _provision_user_if_new(current_user_id_auth, payload)
         if provisioned:
+            if provisioned == "patient":
+                _ensure_patient_device(current_user_id_auth)
             return provisioned
 
     role_raw = payload.get(AUTH0_ROLE_CLAIM) or payload.get("role") or payload.get("roles") or payload.get("https://vitalio.app/roles")
@@ -236,8 +319,11 @@ def get_current_user_role() -> str:
     if role in ("aidant", "family"):
         return "caregiver"
     if role == "user":
-        return "patient"
-    return role or "patient"
+        role = "patient"
+    role = role or "patient"
+    if role == "patient" and current_user_id_auth:
+        _ensure_patient_device(current_user_id_auth)
+    return role
 
 
 def requires_auth(f):
@@ -255,7 +341,7 @@ def requires_auth(f):
                 "code": "invalid_token",
                 "message": "JWT missing user identifier in 'sub' claim"
             }, 401)
-        user_id = get_or_create_user(auth0_sub, user_email)
+        user_id = get_or_create_user(auth0_sub, payload)
         g.user_id_auth = auth0_sub
         g.user_id = user_id
         g.user_email = user_email

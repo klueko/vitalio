@@ -12,8 +12,8 @@
 }
 
 .family-theme {
-    --primary-color: #{$secondary};
-    --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    --primary-color: #{$accent};
+    --bg-gradient: linear-gradient(160deg, #f0fdfa 0%, #ecfeff 40%, #f8fafc 100%);
 }
 
 .admin-theme {

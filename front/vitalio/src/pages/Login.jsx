@@ -83,6 +83,12 @@ export default function Login() {
                 const profilePayload = {};
                 if (user.given_name)  profilePayload.first_name   = user.given_name;
                 if (user.family_name) profilePayload.last_name    = user.family_name;
+                // Si Auth0 ne fournit que name, le découper pour first_name/last_name (display_name = first + last)
+                if ((!profilePayload.first_name || !profilePayload.last_name) && user.name) {
+                    const parts = String(user.name).trim().split(/\s+/);
+                    if (parts.length >= 2 && !profilePayload.first_name) profilePayload.first_name = parts[0];
+                    if (parts.length >= 2 && !profilePayload.last_name)  profilePayload.last_name  = parts.slice(1).join(' ');
+                }
                 if (user.name)        profilePayload.display_name = user.name;
                 if (user.email)       profilePayload.email        = user.email;
                 if (user.picture)     profilePayload.picture      = user.picture;

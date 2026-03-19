@@ -239,59 +239,129 @@
   margin-top: 0.15rem;
 }
 
-// ── Stats row ──
+// ── Stats section ──
+.pml-stats-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.pml-stats-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.pml-stats-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.pml-stats-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
 .pml-stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .pml-stat-card {
+  --stat-color: #1d4ed8;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: #fafbfc;
+  border: 1px solid #f1f5f9;
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.2s, border-color 0.2s;
+
+  &:hover {
+    border-color: #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  &--alert {
+    background: linear-gradient(135deg, #fffbeb 0%, #fefce8 100%);
+    border-color: #fef3c7;
+  }
 }
 
-.pml-stat-icon {
+.pml-stat-icon-wrap {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: var(--stat-color);
 }
 
 .pml-stat-content {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .pml-stat-value {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #0f172a;
   line-height: 1.2;
+  letter-spacing: -0.02em;
 
   small {
-    font-size: 0.65em;
-    font-weight: 500;
+    font-size: 0.6em;
+    font-weight: 600;
     color: #94a3b8;
-    margin-left: 0.2em;
+    margin-left: 0.15em;
   }
 }
 
 .pml-stat-label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.15rem;
 }
 
 .pml-stat-sub {
   font-size: 0.7rem;
   color: #94a3b8;
-  margin-top: 0.1rem;
+  margin-top: 0.35rem;
+  line-height: 1.35;
+}
+
+// ── Score de variabilité ──
+.pml-variability-section {
+  .pml-variability-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+
+  .pml-variability-toggles {
+    display: flex;
+    gap: 0.35rem;
+  }
 }
 
 // ── Vital tabs ──
@@ -329,6 +399,93 @@
 // ── Charts ──
 .pml-chart-wrap {
   margin-top: 0.5rem;
+}
+
+.pml-downsample-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+// ── Heatmap jour × heure ──
+.pml-heatmap-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+.pml-heatmap {
+  display: inline-block;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  th, td {
+    padding: 0;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  th {
+    background: #f1f5f9;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.4rem 0.25rem;
+  }
+
+  .pml-heatmap-day-label {
+    min-width: 52px;
+    text-align: right;
+    padding-right: 0.5rem !important;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  .pml-heatmap-cell {
+    min-width: 22px;
+    width: 22px;
+    height: 22px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: default;
+
+    &:hover {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 2px #1d4ed8;
+      z-index: 1;
+    }
+  }
+
+  .pml-heatmap-hour-row th {
+    font-size: 0.68rem;
+    padding: 0.3rem 0.15rem;
+  }
+}
+
+.pml-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: #64748b;
+
+  .pml-heatmap-legend-scale {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+
+    span {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+  }
 }
 
 .pml-chart-header {
@@ -718,8 +875,26 @@
     font-size: 1.2rem;
   }
 
+  .pml-stats-section {
+    padding: 1rem 1.25rem;
+  }
+
   .pml-stats-row {
     grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .pml-stat-card {
+    padding: 0.85rem 1rem;
+  }
+
+  .pml-stat-icon-wrap {
+    width: 38px;
+    height: 38px;
+  }
+
+  .pml-stat-value {
+    font-size: 1.3rem;
   }
 
   .pml-vital-tabs {

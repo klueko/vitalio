@@ -1,10 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import CaregiverLayout from './components/CaregiverLayout';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import InviteAccept from './pages/InviteAccept';
 import CaregiverInviteAccept from './pages/CaregiverInviteAccept';
 import PatientView from './pages/PatientView';
+import PatientOnboarding from './pages/PatientOnboarding';
 import PatientMeasurement from './pages/PatientMeasurement';
 import PatientMLView from './pages/PatientMLView';
 import DoctorView from './pages/DoctorView';
@@ -13,9 +15,11 @@ import DoctorPatientML from './pages/DoctorPatientML';
 import DoctorMLView from './pages/DoctorMLView';
 import FamilyView from './pages/FamilyView';
 import CaregiverPatientDetail from './pages/CaregiverPatientDetail';
+import CaregiverPatientML from './pages/CaregiverPatientML';
 import AdminView from './pages/AdminView';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
+import PatientOnboardingGuard from './components/PatientOnboardingGuard';
 
 function AppRoutes() {
   return (
@@ -31,12 +35,26 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
+      <Route
+        path="/patient/onboarding"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['patient']}>
+              <PatientOnboardingGuard>
+                <PatientOnboarding />
+              </PatientOnboardingGuard>
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        }
+      />
       <Route 
         path="/patient" 
         element={
           <ProtectedRoute>
             <RoleProtectedRoute allowedRoles={['patient']}>
-              <PatientView />
+              <PatientOnboardingGuard>
+                <PatientView />
+              </PatientOnboardingGuard>
             </RoleProtectedRoute>
           </ProtectedRoute>
         } 
@@ -46,7 +64,9 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RoleProtectedRoute allowedRoles={['patient']}>
-              <PatientMeasurement />
+              <PatientOnboardingGuard>
+                <PatientMeasurement />
+              </PatientOnboardingGuard>
             </RoleProtectedRoute>
           </ProtectedRoute>
         }
@@ -56,7 +76,9 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RoleProtectedRoute allowedRoles={['patient']}>
-              <PatientMLView />
+              <PatientOnboardingGuard>
+                <PatientMLView />
+              </PatientOnboardingGuard>
             </RoleProtectedRoute>
           </ProtectedRoute>
         }
@@ -106,31 +128,29 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RoleProtectedRoute allowedRoles={['caregiver', 'aidant']}>
-              <FamilyView />
+              <CaregiverLayout />
             </RoleProtectedRoute>
           </ProtectedRoute>
-        } 
-      />
+        }
+      >
+        <Route index element={<FamilyView />} />
+        <Route path="patient/:patientId" element={<CaregiverPatientDetail />} />
+        <Route path="patient/:patientId/ml" element={<CaregiverPatientML />} />
+      </Route>
       <Route 
         path="/family" 
         element={
           <ProtectedRoute>
             <RoleProtectedRoute allowedRoles={['caregiver', 'aidant']}>
-              <FamilyView />
+              <CaregiverLayout />
             </RoleProtectedRoute>
           </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/caregiver/patient/:patientId" 
-        element={
-          <ProtectedRoute>
-            <RoleProtectedRoute allowedRoles={['caregiver', 'aidant']}>
-              <CaregiverPatientDetail />
-            </RoleProtectedRoute>
-          </ProtectedRoute>
-        } 
-      />
+        }
+      >
+        <Route index element={<FamilyView />} />
+        <Route path="patient/:patientId" element={<CaregiverPatientDetail />} />
+        <Route path="patient/:patientId/ml" element={<CaregiverPatientML />} />
+      </Route>
       <Route 
         path="/admin" 
         element={

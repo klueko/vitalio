@@ -1,4 +1,4 @@
-# Vitalio – Scripts SQL Server
+# Vitalio - Scripts SQL Server
 
 Exécuter les scripts **dans l’ordre** (SSMS, Azure Data Studio ou sqlcmd).
 

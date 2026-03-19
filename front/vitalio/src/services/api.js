@@ -41,6 +41,13 @@ export async function updatePatientProfile(accessToken, payload) {
   })
 }
 
+export async function completeOnboarding(accessToken, payload) {
+  return apiRequest('/api/me/onboarding', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function submitPatientMeasurement(accessToken, measurement) {
   return apiRequest('/api/me/measurements', accessToken, {
     method: 'POST',
@@ -72,6 +79,22 @@ export async function getCaregiverPatients(accessToken) {
   })
 }
 
+export async function getDoctorAlerts(accessToken, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.status) sp.set('status', params.status)
+  if (params.limit) sp.set('limit', String(params.limit))
+  const q = sp.toString()
+  return apiRequest(`/api/doctor/alerts${q ? `?${q}` : ''}`, accessToken, { method: 'GET' })
+}
+
+export async function getCaregiverAlerts(accessToken, params = {}) {
+  const sp = new URLSearchParams()
+  if (params.status) sp.set('status', params.status)
+  if (params.limit) sp.set('limit', String(params.limit))
+  const q = sp.toString()
+  return apiRequest(`/api/caregiver/alerts${q ? `?${q}` : ''}`, accessToken, { method: 'GET' })
+}
+
 export async function getPatientMeasurementsById(accessToken, patientId, params = {}) {
   const searchParams = new URLSearchParams()
   if (params.limit) searchParams.set('limit', String(params.limit))
@@ -91,6 +114,24 @@ export async function createDoctorFeedback(accessToken, patientId, feedbackPaylo
 
 export async function getLatestPatientFeedback(accessToken, patientId, limit = 5) {
   return apiRequest(`/api/patients/${encodeURIComponent(patientId)}/feedback/latest?limit=${limit}`, accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getPatientDoctorInfo(accessToken, patientId) {
+  return apiRequest(`/api/patients/${encodeURIComponent(patientId)}/doctor-info`, accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getPatientCaregiverInfo(accessToken, patientId) {
+  return apiRequest(`/api/patients/${encodeURIComponent(patientId)}/caregiver-info`, accessToken, {
+    method: 'GET',
+  })
+}
+
+export async function getPatientProfileForDoctor(accessToken, patientId) {
+  return apiRequest(`/api/patients/${encodeURIComponent(patientId)}/profile`, accessToken, {
     method: 'GET',
   })
 }

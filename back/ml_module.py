@@ -544,6 +544,8 @@ FEATURE_LABELS:Dict[str,str]={
 FORECAST_MIN_SAMPLES=3
 FORECAST_MAX_HORIZON_HOURS=72
 FORECAST_EMA_HALF_LIFE_HOURS=4.0
+PROPHET_MIN_HOURLY_POINTS=12  # Prophet: min hourly buckets (12h = half day)
+CIRCADIAN_STRENGTH=0.6  # How much to apply hourly pattern when Prophet not used (0=flat, 1=full)
 FORECAST_OUTLIER_IQR_FACTOR=2.0
 FORECAST_TREND_P_THRESHOLD=0.05
 
@@ -712,6 +714,116 @@ def _wls_with_prediction_intervals(
         "r_squared":r_squared,
         "predictions":predictions,
     }
+
+
+def _try_prophet_predict(
+    base_ts:datetime,
+    clean_t:np.ndarray,
+    clean_v:np.ndarray,
+    last_ts:datetime,
+    horizon_hours:int,
+    feat:str,
+)->Optional[List[Dict[str,float]]]:
+    """
+    Try Prophet forecast for a single feature. Returns list of {value, lower, upper}
+    or None on any failure. Safe: no exception propagates, output clamped to HARD_RANGES.
+    """
+    try:
+        import pandas as pd
+        from prophet import Prophet
+    except ImportError:
+        logger.info("Prophet non installé, utilisation du modèle linéaire + circadien")
+        return None
+
+    if len(clean_v)<PROPHET_MIN_HOURLY_POINTS:
+        return None
+
+    lo,hi=HARD_RANGES.get(feat,(-1e9,1e9))
+
+    try:
+        hour_from_base=np.floor(clean_t).astype(int)
+        agg:Dict[int,List[float]]={}
+        for i in range(len(clean_t)):
+            h=int(hour_from_base[i])
+            agg.setdefault(h,[]).append(float(clean_v[i]))
+
+        rows=[{"ds":base_ts+timedelta(hours=h),"y":float(np.mean(vals))} for h,vals in sorted(agg.items())]
+        df=pd.DataFrame(rows)
+        df["y"]=np.clip(df["y"].values,lo,hi)
+
+        if len(df)<PROPHET_MIN_HOURLY_POINTS:
+            logger.debug("Prophet %s: données insuffisantes (%d tranches horaires)",feat,len(df))
+            return None
+
+        m=Prophet(
+            daily_seasonality=True,
+            weekly_seasonality=True,
+            yearly_seasonality=False,
+            seasonality_mode="additive",
+            uncertainty_samples=100,
+        )
+        m.fit(df)
+
+        future=m.make_future_dataframe(periods=int(horizon_hours),freq="h")
+        forecast=m.predict(future)
+        tail=forecast.tail(int(horizon_hours))
+
+        preds:List[Dict[str,float]]=[]
+        for _,row in tail.iterrows():
+            v=float(np.clip(row["yhat"],lo,hi))
+            v_lo=float(np.clip(row["yhat_lower"],lo,hi))
+            v_hi=float(np.clip(row["yhat_upper"],lo,hi))
+            if not (math.isfinite(v) and math.isfinite(v_lo) and math.isfinite(v_hi)):
+                return None
+            preds.append({"value":round(v,2),"lower":round(v_lo,2),"upper":round(v_hi,2)})
+
+        if len(preds)!=horizon_hours:
+            return None
+        logger.info("Prophet utilisé pour %s (%d points)",feat,len(preds))
+        return preds
+    except Exception as e:
+        logger.info("Prophet fallback pour %s: %s",feat,str(e))
+        return None
+
+
+def _apply_circadian_to_predictions(
+    base_ts:datetime,
+    clean_t:np.ndarray,
+    clean_v:np.ndarray,
+    forecast_times:np.ndarray,
+    predictions:List[Dict[str,float]],
+    feat:str,
+    strength:float,
+)->List[Dict[str,float]]:
+    """
+    Apply circadian (hour-of-day) pattern to linear predictions for more realistic variation.
+    Uses historical mean per hour vs global mean. strength in [0,1].
+    """
+    if len(predictions)==0 or strength<=0:
+        return predictions
+    lo,hi=HARD_RANGES.get(feat,(-1e9,1e9))
+    global_mean=float(np.mean(clean_v))
+    hourly_sum:Dict[int,List[float]]={}
+    for i in range(len(clean_t)):
+        dt=base_ts+timedelta(hours=float(clean_t[i]))
+        hod=dt.hour
+        hourly_sum.setdefault(hod,[]).append(float(clean_v[i]))
+    if len(hourly_sum)<6:
+        return predictions
+    hourly_mean={h:float(np.mean(v)) for h,v in hourly_sum.items()}
+    result=[]
+    for j,pred in enumerate(predictions):
+        t=forecast_times[j] if j<len(forecast_times) else 0
+        dt=base_ts+timedelta(hours=float(t))
+        hod=dt.hour
+        deviation=hourly_mean.get(hod,global_mean)-global_mean
+        adj=deviation*strength
+        v=float(np.clip(pred["value"]+adj,lo,hi))
+        v_lo=float(np.clip(pred["lower"]+adj,lo,hi))
+        v_hi=float(np.clip(pred["upper"]+adj,lo,hi))
+        result.append({"value":round(v,2),"lower":round(v_lo,2),"upper":round(v_hi,2)})
+    return result
+
 
 def _classify_trend(feat:str,slope_per_hour:float,p_value:float)->Dict[str,Any]:
     """Classify trend direction + strength with statistical significance gate."""
@@ -1059,6 +1171,15 @@ def forecast_vitals(
             anchor=(float(clean_t[-1]),float(ema[-1])),
         )
 
+        prophet_preds=_try_prophet_predict(
+            base_ts,clean_t,clean_v,last_ts,actual_horizon,feat
+        )
+        use_preds=prophet_preds if prophet_preds is not None else wls["predictions"]
+        if prophet_preds is None and CIRCADIAN_STRENGTH>0:
+            use_preds=_apply_circadian_to_predictions(
+                base_ts,clean_t,clean_v,forecast_times,use_preds,feat,CIRCADIAN_STRENGTH
+            )
+
         trend=_classify_trend(feat,wls["slope"],mk_p)
 
         clinical_alerts=_detect_clinical_drift(ema,clean_t,feat)
@@ -1072,7 +1193,7 @@ def forecast_vitals(
         lo,hi=PHYSIOLOGICAL_RANGES.get(feat,(-1e9,1e9))
 
         preds_list=[]
-        for j, pred in enumerate(wls["predictions"]):
+        for j, pred in enumerate(use_preds):
             in_range=lo<=pred["value"]<=hi
             entry={
                 "t_hours":round(float(forecast_times[j]),2),
@@ -1124,7 +1245,7 @@ def forecast_vitals(
     global_confidence=round(sum(ok_scores)/len(ok_scores)) if ok_scores else 0
 
     return {
-        "model_version":"forecast-v2.1",
+        "model_version":"forecast-v3.0",
         "generated_at":datetime.now(timezone.utc).isoformat(),
         "n_measurements":len(sorted_m),
         "horizon":actual_horizon,

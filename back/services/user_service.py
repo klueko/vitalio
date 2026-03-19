@@ -1,14 +1,19 @@
 """
 User, device, and relationship helpers.
 """
+import re
 from typing import List, Optional, Any, Dict
 from datetime import datetime, timezone
 from pymongo.errors import PyMongoError
+from bson import ObjectId
 
 from flask import g
 from database import get_identity_db, get_medical_db
 from exceptions import AuthError, DatabaseError
 from api_auth import get_current_user_role, get_user_role
+
+# ObjectId hex string: 24 hexadecimal characters
+OBJECTID_PATTERN = re.compile(r"^[a-fA-F0-9]{24}$")
 
 
 def get_device_ids(user_id_auth: str) -> List[str]:
@@ -113,6 +118,21 @@ def get_assigned_doctor_ids_for_patient(patient_user_id_auth: str) -> List[str]:
         }, 500)
 
 
+def get_assigned_caregiver_ids_for_patient(patient_user_id_auth: str) -> List[str]:
+    """Return caregiver Auth0 IDs assigned to a patient."""
+    try:
+        cursor = get_identity_db().caregiver_patients.find(
+            {"patient_user_id_auth": patient_user_id_auth},
+            projection={"_id": 0, "caregiver_user_id_auth": 1}
+        )
+        return [doc.get("caregiver_user_id_auth") for doc in cursor if doc.get("caregiver_user_id_auth")]
+    except PyMongoError as e:
+        raise DatabaseError({
+            "code": "caregiver_assignments_query_error",
+            "message": f"Failed to query caregiver assignments for patient: {str(e)}"
+        }, 500)
+
+
 def relationship_exists(relationship_type: str, user_id_auth: str, patient_user_id_auth: str) -> bool:
     """Check if relationship exists between doctor/caregiver and patient."""
     identity_db = get_identity_db()
@@ -148,7 +168,7 @@ def ensure_patient_access_or_403(patient_user_id_auth: str):
                 "message": "This patient is not assigned to the authenticated doctor"
             }, 403)
         return
-    if role == "caregiver":
+    if role in ("caregiver", "aidant"):
         if not relationship_exists("caregiver", current_user_id_auth, patient_user_id_auth):
             raise AuthError({
                 "code": "patient_not_assigned",
@@ -198,6 +218,42 @@ def normalize_user_id_auth(value: Any, field_name: str) -> str:
     return normalized
 
 
+def resolve_patient_id_to_user_id_auth(patient_id: str) -> Optional[str]:
+    """
+    Resolve patient_id from URL to user_id_auth.
+    If patient_id is a MongoDB ObjectId (24 hex chars), lookup by _id and return user_id_auth.
+    Otherwise treat as user_id_auth (Auth0 ID) and return as-is.
+    Returns None if ObjectId lookup fails.
+    """
+    if not patient_id or not isinstance(patient_id, str):
+        return None
+    pid = str(patient_id).strip()
+    if not pid:
+        return None
+    if OBJECTID_PATTERN.match(pid):
+        try:
+            doc = get_identity_db().users.find_one(
+                {"_id": ObjectId(pid)},
+                projection={"user_id_auth": 1}
+            )
+            return doc.get("user_id_auth") if doc else None
+        except Exception:
+            return None
+    return pid
+
+
+def get_user_db_id(user_id_auth: str) -> Optional[str]:
+    """Return the MongoDB _id of a user as string, or None if not found."""
+    try:
+        doc = get_identity_db().users.find_one(
+            {"user_id_auth": user_id_auth},
+            projection={"_id": 1}
+        )
+        return str(doc["_id"]) if doc and doc.get("_id") else None
+    except Exception:
+        return None
+
+
 def get_user_profile(user_id_auth: str) -> Dict[str, Any]:
     """Get profile display data for one user."""
     try:
@@ -206,7 +262,9 @@ def get_user_profile(user_id_auth: str) -> Dict[str, Any]:
             projection={
                 "_id": 0, "display_name": 1, "email": 1,
                 "first_name": 1, "last_name": 1, "age": 1, "sex": 1,
+                "phone": 1, "birthdate": 1,
                 "contact": 1, "picture": 1, "emergency_contact": 1,
+                "medical_history": 1, "onboarding_completed": 1,
             }
         )
         return profile or {}

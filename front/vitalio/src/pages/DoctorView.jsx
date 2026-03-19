@@ -59,7 +59,7 @@ export default function DoctorView() {
     if (!keyword) return patients
     return patients.filter((patient) => {
       const name = String(patient.display_name || '').toLowerCase()
-      const id = String(patient.patient_id || '').toLowerCase()
+      const id = String(patient.id || patient.patient_id || '').toLowerCase()
       const device = String(patient.device_id || '').toLowerCase()
       return name.includes(keyword) || id.includes(keyword) || device.includes(keyword)
     })
@@ -270,14 +270,13 @@ export default function DoctorView() {
                     <tbody>
                       {filteredPatients.map((patient) => (
                         <tr
-                          key={patient.patient_id}
+                          key={patient.id || patient.patient_id}
                           className="patient-row"
-                          onClick={() => navigate(`/doctor/patient/${encodeURIComponent(patient.patient_id)}`)}
+                          onClick={() => navigate(`/doctor/patient/${encodeURIComponent(patient.id || patient.patient_id)}`)}
                         >
                           <td>
                             <span className="doctor-table-name">
                               {patient.display_name || 'Patient inconnu'}
-                              <span className="doctor-table-id"> ({patient.patient_id})</span>
                             </span>
                           </td>
                           <td>{formatLastTime(patient.last_measurement?.timestamp)}</td>

@@ -14,6 +14,9 @@ AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
 API_AUDIENCE = os.getenv("AUTH0_AUDIENCE")
 AUTH0_ALGORITHMS = ["RS256"]
 AUTH0_ROLE_CLAIM = os.getenv("AUTH0_ROLE_CLAIM", "https://vitalio.app/role")
+# Auth0 Management API (Machine-to-Machine app for creating users)
+AUTH0_M2M_CLIENT_ID = os.getenv("AUTH0_M2M_CLIENT_ID")
+AUTH0_M2M_CLIENT_SECRET = os.getenv("AUTH0_M2M_CLIENT_SECRET")
 
 # MongoDB
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
@@ -30,6 +33,7 @@ MQTT_CA_CERT = os.getenv("MQTT_CA_CERT", "./mosquitto/certs/ca.crt")
 MQTT_ENABLED = os.getenv("MQTT_ENABLED", "true").lower() == "true"
 
 # Alert engine defaults
+# Une seule mesure hors seuil suffit pour déclencher une alerte (prises de mesure peu fréquentes).
 ALERT_DEFAULT_THRESHOLDS = {
     "spo2_min": 92.0,
     "heart_rate_min": 50.0,
@@ -37,7 +41,7 @@ ALERT_DEFAULT_THRESHOLDS = {
     "temperature_min": 35.5,
     "temperature_max": 38.0,
 }
-ALERT_DEFAULT_CONSECUTIVE_BREACHES = 3
+ALERT_DEFAULT_CONSECUTIVE_BREACHES = 1
 
 # Invitations
 INVITE_TTL_HOURS = int(os.getenv("INVITE_TTL_HOURS", "24"))

@@ -12,7 +12,7 @@ import {
 
 const NAV_ITEMS = [
   { to: '/patient', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-  { to: '/patient/ml', icon: BrainCircuit, label: 'Analyse ML' },
+  { to: '/patient/ml', icon: BrainCircuit, label: 'Analyse de mes mesures' },
 ]
 
 export default function PatientLayout({ children }) {

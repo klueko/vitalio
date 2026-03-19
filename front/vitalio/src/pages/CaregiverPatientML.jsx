@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import {
   ArrowLeft,
@@ -30,7 +30,6 @@ import {
   Legend, Brush,
 } from 'recharts'
 import { getPatientMLAnalysis } from '../services/api'
-import DoctorLayout from '../components/DoctorLayout'
 
 const VITAL_CONFIG = {
   heart_rate: {
@@ -168,9 +167,11 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export default function DoctorPatientML() {
+export default function CaregiverPatientML() {
   const { patientId } = useParams()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const base = pathname.startsWith('/family') ? '/family' : '/caregiver'
   const { getAccessTokenSilently } = useAuth0()
 
   const [loading, setLoading] = useState(true)
@@ -399,12 +400,12 @@ export default function DoctorPatientML() {
   const cfg = VITAL_CONFIG[activeVital]
 
   return (
-    <DoctorLayout>
+    <div className="caregiver-dashboard family-theme">
       <div className="pml-page">
         {}
         <header className="pml-header">
           <div className="pml-header-left">
-            <button className="pml-back-btn" onClick={() => navigate(`/doctor/patient/${patientId}`)}>
+            <button className="pml-back-btn" onClick={() => navigate(`${base}/patient/${patientId}`)}>
               <ArrowLeft size={18} />
             </button>
             <div>
@@ -544,15 +545,15 @@ export default function DoctorPatientML() {
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart data={variabilityData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
                       <defs>
-                        <linearGradient id="pmlVarFc" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="pmlVarFcCg" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#b91c1c" stopOpacity={0.25} />
                           <stop offset="95%" stopColor="#b91c1c" stopOpacity={0} />
                         </linearGradient>
-                        <linearGradient id="pmlVarSpo2" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="pmlVarSpo2Cg" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#1d4ed8" stopOpacity={0.25} />
                           <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0} />
                         </linearGradient>
-                        <linearGradient id="pmlVarTemp" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="pmlVarTempCg" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#047857" stopOpacity={0.25} />
                           <stop offset="95%" stopColor="#047857" stopOpacity={0} />
                         </linearGradient>
@@ -565,9 +566,9 @@ export default function DoctorPatientML() {
                         contentStyle={{ borderRadius: '8px', fontSize: '0.8rem' }}
                       />
                       <Legend />
-                      <Area type="monotone" dataKey="fc_std" name="FC (écart-type)" stroke="#b91c1c" fill="url(#pmlVarFc)" strokeWidth={1.5} dot={false} connectNulls />
-                      <Area type="monotone" dataKey="spo2_std" name="SpO₂ (écart-type)" stroke="#1d4ed8" fill="url(#pmlVarSpo2)" strokeWidth={1.5} dot={false} connectNulls />
-                      <Area type="monotone" dataKey="temp_std" name="Temp (écart-type)" stroke="#047857" fill="url(#pmlVarTemp)" strokeWidth={1.5} dot={false} connectNulls />
+                      <Area type="monotone" dataKey="fc_std" name="FC (écart-type)" stroke="#b91c1c" fill="url(#pmlVarFcCg)" strokeWidth={1.5} dot={false} connectNulls />
+                      <Area type="monotone" dataKey="spo2_std" name="SpO₂ (écart-type)" stroke="#1d4ed8" fill="url(#pmlVarSpo2Cg)" strokeWidth={1.5} dot={false} connectNulls />
+                      <Area type="monotone" dataKey="temp_std" name="Temp (écart-type)" stroke="#047857" fill="url(#pmlVarTempCg)" strokeWidth={1.5} dot={false} connectNulls />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -1026,6 +1027,6 @@ export default function DoctorPatientML() {
           </>
         )}
       </div>
-    </DoctorLayout>
+    </div>
   )
 }

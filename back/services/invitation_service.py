@@ -51,8 +51,11 @@ def send_invitation_email(
     web_invite_url: str,
     expires_at: datetime,
     doctor_display_name: str = "Votre médecin",
+    password_setup_url: Optional[str] = None,
 ) -> None:
-    """Send invitation email with QR code to patient."""
+    """Send invitation email with QR code to patient.
+    If password_setup_url is provided, invite the user to set their password first.
+    """
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         raise ValueError("SMTP non configuré: SMTP_HOST, SMTP_USER et SMTP_PASSWORD sont requis dans .env")
 
@@ -66,6 +69,16 @@ def send_invitation_email(
     msg["From"] = EMAIL_FROM
     msg["To"] = patient_email
 
+    password_block = ""
+    if password_setup_url:
+        password_block = f"""
+  <p style="margin: 16px 0;">
+    <strong>Première connexion :</strong> votre compte a été créé. 
+    <a href="{password_setup_url}" style="color: #2563eb; font-weight: bold;">Définissez votre mot de passe</a> 
+    pour accéder à VitalIO.
+  </p>
+  <p>Ensuite, cliquez sur le lien ci-dessous pour accepter l'invitation.</p>
+"""
     html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -74,11 +87,8 @@ def send_invitation_email(
   <h2 style="color: #2563eb;">Invitation VitalIO</h2>
   <p>Bonjour,</p>
   <p>{doctor_display_name} vous invite à associer votre compte VitalIO pour le suivi de vos constantes vitales.</p>
-  <p><strong>Scannez le QR code ci-dessous</strong> avec votre téléphone pour accepter l'invitation et lier votre compte au cabinet médical :</p>
-  <p style="text-align: center; margin: 24px 0;">
-    <img src="cid:qrcode" alt="QR code invitation" width="256" height="256" style="border: 1px solid #ddd; border-radius: 8px;" />
-  </p>
-  <p>Ou cliquez sur ce lien : <a href="{web_invite_url}">{web_invite_url}</a></p>
+  {password_block}
+  <p>Cliquez sur ce lien : <a href="{web_invite_url}">{web_invite_url}</a></p>
   <p style="color: #666; font-size: 14px;">Cette invitation expire le <strong>{expires_str}</strong>.</p>
   <p>Cordialement,<br/>L'équipe VitalIO</p>
 </body>
@@ -121,7 +131,7 @@ def send_caregiver_invitation_email(
     expires_str = expires_at.strftime("%d/%m/%Y à %H:%M") if isinstance(expires_at, datetime) else str(expires_at)
 
     msg = MIMEMultipart("related")
-    msg["Subject"] = "VitalIO — Vous êtes désigné(e) comme contact d'urgence"
+    msg["Subject"] = "VitalIO - Vous êtes désigné(e) comme contact d'urgence"
     msg["From"] = EMAIL_FROM
     msg["To"] = caregiver_email
 
@@ -130,12 +140,14 @@ def send_caregiver_invitation_email(
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 500px; margin: 0 auto; padding: 20px;">
-  <h2 style="color: #2563eb;">VitalIO — Invitation Aidant</h2>
+  <h2 style="color: #2563eb;">VitalIO - Invitation Aidant</h2>
   <p>Bonjour,</p>
   <p><strong>{patient_display_name}</strong> vous a désigné(e) comme contact d'urgence sur VitalIO.</p>
   <p style="text-align: center; margin: 24px 0;">
-    <a href="{web_invite_url}" style="display: inline-block; padding: 14px 32px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold;">Créer mon compte aidant</a>
+    <a href="{web_invite_url}" style="display: inline-block; padding: 14px 32px; background: #2563eb; color: #fff !important; text-decoration: none; border-radius: 8px; font-weight: bold;">Créer mon compte aidant</a>
   </p>
+  <p>Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+  <p><a href="{web_invite_url}" style="color: #2563eb; word-break: break-all;">{web_invite_url}</a></p>
   <p style="color: #666; font-size: 14px;">Cette invitation expire le <strong>{expires_str}</strong>.</p>
 </body>
 </html>
@@ -211,10 +223,18 @@ def invite_emergency_contact_if_needed(
             "token_hash": hash_secret_token(invite_token),
             "patient_user_id_auth": patient_user_id_auth,
             "caregiver_email": emergency_email,
+            "created_by_user_id_auth": patient_user_id_auth,
             "expires_at": expires_at,
             "used_at": None,
             "created_at": now,
         })
+        log_caregiver_audit_event(
+            "caregiver_invite_created",
+            actor_user_id_auth=patient_user_id_auth,
+            patient_user_id_auth=patient_user_id_auth,
+            caregiver_email=emergency_email,
+            details={"expires_at": expires_at.isoformat()},
+        )
     except PyMongoError as e:
         logger.warning("Failed to create caregiver invite for %s: %s", emergency_email, e)
         return None
@@ -236,7 +256,7 @@ def invite_emergency_contact_if_needed(
 
         threading.Thread(target=_send_async, daemon=True).start()
     else:
-        logger.warning("SMTP not configured — caregiver invite created but email NOT sent for %s", emergency_email)
+        logger.warning("SMTP not configured - caregiver invite created but email NOT sent for %s", emergency_email)
 
     return invite_token
 
@@ -269,6 +289,31 @@ def log_link_audit_event(
         "mode": mode,
         "created_at": datetime.now(timezone.utc),
         "details": details or {},
+    })
+
+
+def log_caregiver_audit_event(
+    event_type: str,
+    actor_user_id_auth: str,
+    patient_user_id_auth: str,
+    caregiver_email: Optional[str] = None,
+    caregiver_user_id_auth: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+):
+    """Write immutable audit event for caregiver invite operations."""
+    d = dict(details or {})
+    if caregiver_email is not None:
+        d["caregiver_email"] = caregiver_email
+    if caregiver_user_id_auth is not None:
+        d["caregiver_user_id_auth"] = caregiver_user_id_auth
+    get_identity_db().audit_links.insert_one({
+        "event_type": event_type,
+        "actor_user_id_auth": actor_user_id_auth,
+        "doctor_user_id_auth": "",
+        "patient_user_id_auth": patient_user_id_auth,
+        "mode": "caregiver_invite",
+        "created_at": datetime.now(timezone.utc),
+        "details": d,
     })
 
 
@@ -315,9 +360,12 @@ def get_invite_document_or_404(token_or_code: str, mode: str) -> Dict[str, Any]:
             "message": "Invitation/code already used"
         }, 409)
     expires_at = invite.get("expires_at")
-    if isinstance(expires_at, datetime) and expires_at < datetime.now(timezone.utc):
-        raise AuthError({
-            "code": "invite_expired",
-            "message": "Invitation/code expired"
-        }, 410)
+    if isinstance(expires_at, datetime):
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise AuthError({
+                "code": "invite_expired",
+                "message": "Invitation/code expired"
+            }, 410)
     return invite

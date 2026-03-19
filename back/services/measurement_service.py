@@ -7,7 +7,7 @@ from pymongo.errors import PyMongoError
 
 from database import get_medical_db, get_identity_db
 from exceptions import DatabaseError
-from services.user_service import get_device_id, get_user_profile, datetime_to_iso_utc
+from services.user_service import get_device_id, get_user_profile, get_user_db_id, datetime_to_iso_utc
 
 
 def get_latest_device_measurement(device_id: str) -> Optional[Dict[str, Any]]:
@@ -72,6 +72,16 @@ def query_patient_measurements(device_id: str, days: int, limit: int = 500) -> L
             "code": "patient_measurements_query_error",
             "message": f"Failed to query patient measurements: {str(e)}"
         }, 500)
+
+
+def count_patient_measurements_total(device_ids: List[str]) -> int:
+    """Count all measurements for the given devices (no time or limit filter)."""
+    if not device_ids:
+        return 0
+    try:
+        return get_medical_db().measurements.count_documents({"device_id": {"$in": device_ids}})
+    except PyMongoError:
+        return 0
 
 
 def query_patient_measurements_for_devices(
@@ -168,9 +178,15 @@ def list_latest_doctor_feedback(patient_user_id_auth: str, limit: int = 5) -> Li
         feedbacks = []
         for doc in cursor:
             created_at = doc.get("created_at")
+            doctor_id = doc.get("doctor_user_id_auth")
+            doctor_profile = get_user_profile(doctor_id) if doctor_id else {}
+            doctor_display_name = (
+                doctor_profile.get("display_name") or doctor_profile.get("email") or doctor_id or ""
+            )
             feedbacks.append({
                 "patient_user_id_auth": doc.get("patient_user_id_auth"),
-                "doctor_user_id_auth": doc.get("doctor_user_id_auth"),
+                "doctor_user_id_auth": doctor_id,
+                "doctor_display_name": doctor_display_name,
                 "message": doc.get("message"),
                 "severity": doc.get("severity"),
                 "status": doc.get("status"),
@@ -191,11 +207,13 @@ def build_assigned_patients_payload(patient_ids: List[str]) -> List[Dict[str, An
     for patient_user_id_auth in patient_ids:
         device_id = get_device_id(patient_user_id_auth)
         profile = get_user_profile(patient_user_id_auth)
+        db_id = get_user_db_id(patient_user_id_auth)
         latest_measurement = get_latest_device_measurement(device_id) if device_id else None
         measured_at = latest_measurement.get("measured_at") if latest_measurement else None
         measured_at_iso = datetime_to_iso_utc(measured_at) if isinstance(measured_at, datetime) else None
 
         patients.append({
+            "id": db_id or patient_user_id_auth,
             "patient_id": patient_user_id_auth,
             "display_name": profile.get("display_name") or profile.get("email") or patient_user_id_auth,
             "device_id": device_id,

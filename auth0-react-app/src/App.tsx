@@ -60,7 +60,7 @@ const createVitalsFromMeasurements = (
         label: "Fréquence cardiaque",
         value: 0,
         unit: "bpm",
-        range: "60–100 au repos",
+        range: "60-100 au repos",
         status: "normal",
       },
       {
@@ -74,7 +74,7 @@ const createVitalsFromMeasurements = (
         label: "Température",
         value: 0,
         unit: "°C",
-        range: "36,1–37,8",
+        range: "36,1-37,8",
         status: "normal",
       },
     ];
@@ -85,7 +85,7 @@ const createVitalsFromMeasurements = (
       label: "Fréquence cardiaque",
       value: latestMeasurement.heart_rate,
       unit: "bpm",
-      range: "60–100 au repos",
+      range: "60-100 au repos",
       status: getVitalStatus("Fréquence cardiaque", latestMeasurement.heart_rate),
     },
     {
@@ -99,7 +99,7 @@ const createVitalsFromMeasurements = (
       label: "Température",
       value: latestMeasurement.temperature,
       unit: "°C",
-      range: "36,1–37,8",
+      range: "36,1-37,8",
       status: getVitalStatus("Température", latestMeasurement.temperature),
     },
   ];

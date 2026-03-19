@@ -122,7 +122,7 @@ export default function PatientMLView() {
       <div className="patient-ml">
         <header className="ml-header">
           <div>
-            <h1><BrainCircuit size={28} /> Analyse ML</h1>
+            <h1><BrainCircuit size={28} /> Analyse de mes mesures</h1>
             <p>Détection d'anomalies par Intelligence Artificielle sur vos constantes vitales.</p>
           </div>
           {modelInfo && (
@@ -169,7 +169,7 @@ export default function PatientMLView() {
             {mlData.scoreSeries.length === 0 && (
               <div className="ml-panel ml-panel--info">
                 <Info size={20} />
-                <span>Aucune mesure scorée par le modèle ML pour le moment. Les scores apparaîtront après l'entraînement du modèle et la réception de nouvelles mesures.</span>
+                <span>Retrouvez ici résumés et analyses de vos mesures.</span>
               </div>
             )}
 
