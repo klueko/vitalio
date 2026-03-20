@@ -4,6 +4,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 import {
   LayoutDashboard,
   BrainCircuit,
+  User,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
 
 const NAV_ITEMS = [
   { to: '/patient', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
+  { to: '/patient/profile', icon: User, label: 'Mon profil' },
   { to: '/patient/ml', icon: BrainCircuit, label: 'Analyse de mes mesures' },
 ]
 

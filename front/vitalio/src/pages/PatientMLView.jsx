@@ -171,12 +171,6 @@ export default function PatientMLView() {
             <h1><BrainCircuit size={28} /> Analyse de mes mesures</h1>
             <p>Détection d'anomalies par Intelligence Artificielle sur vos constantes vitales.</p>
           </div>
-          {modelInfo && (
-            <div className="ml-model-badge">
-              <Info size={14} />
-              <span>Modèle {modelInfo.version}{modelInfo.loaded ? '' : ' (non chargé)'}</span>
-            </div>
-          )}
         </header>
 
         {loading && <div className="ml-panel">Chargement des données ML...</div>}
@@ -188,30 +182,6 @@ export default function PatientMLView() {
 
         {!loading && !error && (
           <>
-            {/* KPI cards */}
-            <section className="ml-kpi-grid">
-              {Object.entries(LEVEL_CONFIG).map(([level, cfg]) => {
-                const count = mlData.counts[level] || 0
-                const Icon = cfg.Icon
-                return (
-                  <article key={level} className="ml-kpi-card" style={{ borderColor: cfg.color, background: cfg.bg }}>
-                    <Icon size={22} color={cfg.color} />
-                    <div>
-                      <span className="ml-kpi-value" style={{ color: cfg.color }}>{count}</span>
-                      <span className="ml-kpi-label">{cfg.label}</span>
-                    </div>
-                  </article>
-                )
-              })}
-              <article className="ml-kpi-card" style={{ borderColor: '#1d4ed8', background: '#eff6ff' }}>
-                <TrendingUp size={22} color="#1d4ed8" />
-                <div>
-                  <span className="ml-kpi-value" style={{ color: '#1d4ed8' }}>{mlData.total}</span>
-                  <span className="ml-kpi-label">Total analysé</span>
-                </div>
-              </article>
-            </section>
-
             {mlData.weekSeries.length > 0 && (
               <section className="ml-panel">
                 <h2><TrendingUp size={18} /> Mes mesures de la semaine</h2>

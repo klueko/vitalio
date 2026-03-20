@@ -62,7 +62,10 @@ app.config['JSON_SORT_KEYS'] = False
 
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["https://vitalio-new.vercel.app"],
+        "origins": [
+            "https://vitalio-new.vercel.app",
+            "http://localhost:5173",
+        ],
         "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True,
@@ -889,6 +892,19 @@ def patch_caregiver_alert(alert_id: str):
             "caregiver_resolution_by": g.user_id_auth,
             "updated_at": now,
         }}
+    )
+    # Enregistrer le commentaire dans Vitalio_Identity.alerts
+    identity_alert_doc = {
+        "medical_alert_id": str(oid),
+        "caregiverComment": resolution_text,
+        "author": "caregiver",
+        "createdAt": now,
+        "caregiver_user_id_auth": g.user_id_auth,
+    }
+    get_identity_db().alerts.update_one(
+        {"medical_alert_id": str(oid)},
+        {"$set": identity_alert_doc},
+        upsert=True,
     )
     return jsonify({"message": "Commentaire enregistré", "alert_id": alert_id,
                     "caregiver_resolution_comment": resolution_text,

@@ -209,9 +209,30 @@ $sidebar-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   .sidebar-link {
     justify-content: center;
     padding: 0.65rem;
+    min-height: 44px;
   }
 
   .sidebar-footer .sidebar-link {
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .patient-sidebar {
+    width: $sidebar-collapsed;
+  }
+
+  .patient-main {
+    margin-left: $sidebar-collapsed;
+  }
+
+  .sidebar-header {
+    padding: 0.75rem 0.5rem;
+    min-height: 56px;
+  }
+
+  .sidebar-toggle {
+    width: 40px;
+    height: 40px;
   }
 }

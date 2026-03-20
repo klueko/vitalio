@@ -72,6 +72,8 @@ def init_database():
         identity_db.caregiver_invites.create_index("patient_user_id_auth")
         identity_db.audit_links.create_index([("event_type", 1), ("created_at", -1)])
         identity_db.audit_links.create_index([("doctor_user_id_auth", 1), ("patient_user_id_auth", 1), ("created_at", -1)])
+        identity_db.alerts.create_index("medical_alert_id", unique=True)
+        identity_db.alerts.create_index([("author", 1), ("createdAt", -1)])
 
         medical_db.measurements.create_index([("device_id", 1), ("measured_at", -1)])
         medical_db.doctor_feedback.create_index([("patient_user_id_auth", 1), ("created_at", -1)])
