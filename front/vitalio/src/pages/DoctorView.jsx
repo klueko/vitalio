@@ -1,320 +1,193 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth0 } from '@auth0/auth0-react'
-import { QRCodeSVG } from 'qrcode.react'
-import { Filter, Mail, QrCode, Search, Send, TriangleAlert, Users } from 'lucide-react'
-import { createCabinetCode, createDoctorInvitation, getDoctorPatients, getDoctorAlerts } from '../services/api'
-import DoctorLayout from '../components/DoctorLayout'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+    Users, Activity, Bell, Settings, LogOut,
+    Search, Filter, ChevronRight
+} from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { PATIENTS_LIST, VITALS_HISTORY } from '../data/mockData';
 
-function formatLastTime(timestamp) {
-  if (!timestamp) return 'Aucune mesure'
-  const date = new Date(timestamp)
-  return date.toLocaleString('fr-FR')
-}
+const SidebarItem = ({ icon: Icon, label, active }) => (
+    <div className={`sidebar-item ${active ? 'active' : ''}`}>
+        <Icon size={20} />
+        <span>{label}</span>
+    </div>
+);
+
+const StatCard = ({ title, value, trend, good }) => (
+    <div className="stat-card">
+        <p className="title">{title}</p>
+        <div className="content-row">
+            <span className="value">{value}</span>
+            <span className={`trend ${good ? 'good' : 'bad'}`}>
+                {trend}
+            </span>
+        </div>
+    </div>
+);
 
 export default function DoctorView() {
-  const navigate = useNavigate()
-  const { getAccessTokenSilently } = useAuth0()
-  const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [patients, setPatients] = useState([])
-  const [inviteInfo, setInviteInfo] = useState(null)
-  const [cabinetCodeInfo, setCabinetCodeInfo] = useState(null)
-  const [patientEmail, setPatientEmail] = useState('')
-  const [sendEmail, setSendEmail] = useState(false)
-  const [actionError, setActionError] = useState('')
-  const [criticalCount, setCriticalCount] = useState(0)
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    let mounted = true
+    return (
+        <div className="doctor-container doctor-theme">
 
-    const loadDoctorPatients = async () => {
-      try {
-        setLoading(true)
-        setError('')
-        const token = await getAccessTokenSilently()
-        const [data, alertsRes] = await Promise.all([
-          getDoctorPatients(token),
-          getDoctorAlerts(token, { status: 'OPEN', limit: 500 }).catch(() => ({ alerts: [] })),
-        ])
-        if (mounted) {
-          setPatients(Array.isArray(data.patients) ? data.patients : [])
-          setCriticalCount(Array.isArray(alertsRes.alerts) ? alertsRes.alerts.length : 0)
-        }
-      } catch (fetchError) {
-        if (mounted) {
-          setError(fetchError.message || 'Impossible de charger les patients')
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadDoctorPatients()
-    return () => {
-      mounted = false
-    }
-  }, [getAccessTokenSilently])
-
-  const filteredPatients = useMemo(() => {
-    const keyword = query.trim().toLowerCase()
-    if (!keyword) return patients
-    return patients.filter((patient) => {
-      const name = String(patient.display_name || '').toLowerCase()
-      const id = String(patient.id || patient.patient_id || '').toLowerCase()
-      const device = String(patient.device_id || '').toLowerCase()
-      return name.includes(keyword) || id.includes(keyword) || device.includes(keyword)
-    })
-  }, [patients, query])
-
-  const alertCount = Math.max(criticalCount, filteredPatients.filter((patient) => patient.alert).length)
-
-  const handleGenerateInvitation = async () => {
-    try {
-      setActionError('')
-      const token = await getAccessTokenSilently()
-      const payload = {}
-      if (sendEmail && patientEmail?.trim()) {
-        payload.patient_email = patientEmail.trim()
-        payload.send_email = true
-      }
-      const data = await createDoctorInvitation(token, payload)
-      setInviteInfo(data)
-    } catch (e) {
-      setActionError(e.message || "Impossible de générer l'invitation")
-    }
-  }
-
-  const handleGenerateCabinetCode = async () => {
-    try {
-      setActionError('')
-      const token = await getAccessTokenSilently()
-      const data = await createCabinetCode(token, { ttl_minutes: 15 })
-      setCabinetCodeInfo(data)
-    } catch (e) {
-      setActionError(e.message || 'Impossible de générer le code cabinet')
-    }
-  }
-
-  return (
-    <DoctorLayout>
-      <div className="doctor-container doctor-theme">
-        <div className="main-content">
-          <header className="doctor-header">
-            <div className="doctor-header-left">
-              <h1 className="doctor-title">Tableau de bord médecin</h1>
-              <p className="doctor-subtitle">Suivez vos patients et gérez les associations</p>
-            </div>
-            <div className="header-actions">
-              <div className="search-bar">
-                <Search className="icon" size={18} />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Rechercher un patient..."
-                />
-              </div>
-            </div>
-          </header>
-
-          <main className="doctor-main">
-          <section className="doctor-stats">
-            <article className="doctor-stat-card doctor-stat-patients">
-              <div className="doctor-stat-icon">
-                <Users size={24} />
-              </div>
-              <div className="doctor-stat-content">
-                <span className="doctor-stat-value">{patients.length}</span>
-                <span className="doctor-stat-label">Patients assignés</span>
-              </div>
-            </article>
-            <article className="doctor-stat-card doctor-stat-alerts">
-              <div className="doctor-stat-icon">
-                <TriangleAlert size={24} />
-              </div>
-              <div className="doctor-stat-content">
-                <span className="doctor-stat-value doctor-stat-value--critical">{alertCount}</span>
-                <span className="doctor-stat-label">Critiques</span>
-              </div>
-            </article>
-            <article className="doctor-stat-card doctor-stat-filtered">
-              <div className="doctor-stat-icon">
-                <Filter size={24} />
-              </div>
-              <div className="doctor-stat-content">
-                <span className="doctor-stat-value">{filteredPatients.length}</span>
-                <span className="doctor-stat-label">Résultats recherche</span>
-              </div>
-            </article>
-          </section>
-
-          <section className="doctor-invite-section">
-            <div className="doctor-invite-card">
-              <div className="doctor-invite-header">
-                <div className="doctor-invite-title-wrap">
-                  <Mail size={22} />
-                  <h3>Inviter un patient</h3>
-                </div>
-                <p className="doctor-invite-desc">Générez une invitation par lien ou QR code, envoyée par email au patient.</p>
-              </div>
-              <div className="doctor-invite-form">
-                <label className="doctor-invite-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={sendEmail}
-                    onChange={(e) => setSendEmail(e.target.checked)}
-                  />
-                  <span>Envoyer par email au patient</span>
-                </label>
-                {sendEmail && (
-                  <input
-                    type="email"
-                    className="doctor-invite-email"
-                    value={patientEmail}
-                    onChange={(e) => setPatientEmail(e.target.value)}
-                    placeholder="Email du patient"
-                  />
-                )}
-                <div className="doctor-invite-actions">
-                  <button
-                    className="doctor-btn doctor-btn-primary"
-                    onClick={handleGenerateInvitation}
-                  >
-                    {sendEmail && patientEmail ? (
-                      <>
-                        <Send size={18} />
-                        Générer et envoyer invitation
-                      </>
-                    ) : (
-                      <>
-                        <QrCode size={18} />
-                        Générer invitation patient
-                      </>
-                    )}
-                  </button>
-                  <button
-                    className="doctor-btn doctor-btn-secondary"
-                    onClick={handleGenerateCabinetCode}
-                  >
-                    <QrCode size={18} />
-                    Code cabinet / QR
-                  </button>
-                </div>
-              </div>
-              {actionError && <p className="doctor-error">{actionError}</p>}
-              {inviteInfo && (
-                <div className="doctor-invite-result">
-                  {inviteInfo.email_sent && (
-                    <div className="doctor-invite-success">
-                      <span className="doctor-invite-success-dot" />
-                      Email envoyé au patient avec le QR code.
+            {/* Sidebar */}
+            <div className="sidebar">
+                <div>
+                    <div className="logo-area" onClick={() => navigate('/')}>
+                        <div className="logo-icon">V</div>
+                        <span className="logo-text">VitalIO<span>Pro</span></span>
                     </div>
-                  )}
-                  <div className="doctor-invite-token">
-                    <span className="doctor-invite-token-label">Lien d'invitation</span>
-                    <code>{inviteInfo.invite_token}</code>
-                    <span className="doctor-invite-expiry">
-                      Expire le {new Date(inviteInfo.expires_at).toLocaleString('fr-FR')}
-                    </span>
-                  </div>
-                  {(inviteInfo.web_invite_url || inviteInfo.qr_payload) && (
-                    <div className="doctor-invite-qr">
-                      <div className="doctor-invite-qr-box">
-                        <QRCodeSVG
-                          value={inviteInfo.web_invite_url || inviteInfo.qr_payload}
-                          size={200}
-                          level="M"
-                        />
-                      </div>
-                      <p>Scannez pour accepter l'invitation</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              {cabinetCodeInfo && (
-                <div className="doctor-invite-result doctor-cabinet-result">
-                  <span className="doctor-invite-token-label">Code cabinet</span>
-                  <code>{cabinetCodeInfo.code}</code>
-                  <span className="doctor-invite-expiry">
-                    Expire le {new Date(cabinetCodeInfo.expires_at).toLocaleString('fr-FR')}
-                  </span>
-                </div>
-              )}
-            </div>
-          </section>
 
-          <section className="doctor-patients-section">
-            <div className="doctor-patients-card">
-              <div className="section-header">
-                <h3>Patients assignés</h3>
-              </div>
-              {loading && (
-                <div className="doctor-loading">
-                  <div className="doctor-loading-spinner" />
-                  <p>Chargement des patients...</p>
+                    <div className="nav-menu">
+                        <SidebarItem icon={Users} label="Mes Patients" active />
+                        <SidebarItem icon={Activity} label="Monitoring" />
+                        <SidebarItem icon={Bell} label="Alertes" />
+                        <SidebarItem icon={Settings} label="Paramètres" />
+                    </div>
                 </div>
-              )}
-              {!loading && error && <p className="doctor-error">{error}</p>}
-              {!loading && !error && (
-                <div className="doctor-table-wrap">
-                  <table className="doctor-table">
-                    <thead>
-                      <tr>
-                        <th>Patient</th>
-                        <th>Dernière mesure</th>
-                        <th>SpO₂</th>
-                        <th>FC</th>
-                        <th>Température</th>
-                        <th>Alerte</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPatients.map((patient) => (
-                        <tr
-                          key={patient.id || patient.patient_id}
-                          className="patient-row"
-                          onClick={() => navigate(`/doctor/patient/${encodeURIComponent(patient.id || patient.patient_id)}`)}
-                        >
-                          <td>
-                            <span className="doctor-table-name">
-                              {patient.display_name || 'Patient inconnu'}
-                            </span>
-                          </td>
-                          <td>{formatLastTime(patient.last_measurement?.timestamp)}</td>
-                          <td>{patient.last_measurement?.spo2 ?? '-'}</td>
-                          <td>{patient.last_measurement?.heart_rate ?? '-'}</td>
-                          <td>{patient.last_measurement?.temperature ?? '-'}</td>
-                          <td>
-                            <span className={`risk-badge ${patient.alert ? 'high' : 'low'}`}>
-                              {patient.alert ? 'Alerte' : 'OK'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {!filteredPatients.length && (
-                        <tr>
-                          <td colSpan="6">
-                            <div className="doctor-empty">
-                              <Users size={48} />
-                              <p>Aucun patient assigné pour ce médecin.</p>
-                              <span>Utilisez les invitations ci-dessus pour associer des patients.</span>
+
+                <div className="user-profile">
+                    <div className="avatar">Dr</div>
+                    <div className="info">
+                        <p className="name">Dr. Sophie</p>
+                        <p className="role">Cardiologue</p>
+                    </div>
+                    <LogOut size={16} className="logout-btn" onClick={() => navigate('/')} />
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="main-content">
+
+                {/* Topbar */}
+                <header>
+                    <h2>Tableau de Bord</h2>
+                    <div className="header-actions">
+                        <div className="search-bar">
+                            <Search className="icon" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Rechercher patient..."
+                            />
+                        </div>
+                        <button className="bell-btn">
+                            <Bell size={20} />
+                            <span className="badge"></span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* Scrollable Content */}
+                <main>
+
+                    {/* Stats Bar */}
+                    <div className="stats-bar">
+                        <StatCard title="Patients Suivis" value="24" trend="+3" good={true} />
+                        <StatCard title="Alertes Critiques" value="2" trend="-1" good={true} />
+                        <StatCard title="Consultations" value="8" trend="Auj." good={true} />
+                        <StatCard title="Risque Moyen" value="Medium" trend="+2%" good={false} />
+                    </div>
+
+                    <div className="dashboard-grid">
+
+                        {/* Patient Table */}
+                        <div className="patient-table-section">
+                            <div className="section-header">
+                                <h3>Patients à Risque (Top 5)</h3>
+                                <button>Voir tout <ChevronRight size={16} /></button>
                             </div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                            <div className="overflow-x-auto">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th className="pl-2">Patient</th>
+                                            <th className="text-center">Score Risque</th>
+                                            <th className="text-center">SpO2</th>
+                                            <th className="text-center">BPM</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {PATIENTS_LIST.sort((a, b) => b.riskScore - a.riskScore).map(patient => (
+                                            <tr key={patient.id}>
+                                                <td className="pl-2 font-bold text-slate-700">{patient.name} <span className="font-normal text-slate-400 ml-1">{patient.age} ans</span></td>
+                                                <td className="text-center">
+                                                    <span className={`risk-badge ${patient.riskScore > 50 ? 'high' : 'low'}`}>
+                                                        {patient.riskScore}%
+                                                    </span>
+                                                </td>
+                                                <td className="text-center font-mono">{patient.spo2}%</td>
+                                                <td className="text-center font-mono">{patient.heartRate}</td>
+                                                <td>
+                                                    <span className="status-wrapper">
+                                                        <span className={`dot ${patient.riskScore > 50 ? 'red' : 'green'}`}></span>
+                                                        {patient.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Charts Section */}
+                        <div className="charts-column">
+
+                            {/* SpO2 Chart */}
+                            <div className="chart-card">
+                                <h3>Tendance SpO2 (Robert)</h3>
+                                <div className="chart-area">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={VITALS_HISTORY}>
+                                            <defs>
+                                                <linearGradient id="colorSpo2" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <XAxis dataKey="time" hide />
+                                            <YAxis domain={[90, 100]} hide />
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="spo2"
+                                                stroke="#3b82f6"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorSpo2)"
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Heart Rate Chart */}
+                            <div className="chart-card">
+                                <h3>Tendance Cardiaque (Robert)</h3>
+                                <div className="chart-area">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={VITALS_HISTORY}>
+                                            <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} interval={2} />
+                                            <YAxis domain={[60, 100]} hide />
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Line type="monotone" dataKey="heartRate" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </main>
             </div>
-          </section>
-          </main>
         </div>
-      </div>
-    </DoctorLayout>
-  )
+    );
 }

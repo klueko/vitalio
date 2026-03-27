@@ -1,182 +1,70 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
-import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import vitalioLogo from '../assets/vitalio-logo.png';
 
+// Mock users database for demonstration
+const MOCK_USERS = [
+    { email: 'robert@patient.fr', password: 'patient123', role: 'patient', name: 'Robert' },
+    { email: 'sophie@medecin.fr', password: 'medecin123', role: 'medecin', name: 'Dr. Sophie' },
+    { email: 'julie@famille.fr', password: 'famille123', role: 'aidant', name: 'Julie' },
+    { email: 'thomas@admin.fr', password: 'admin123', role: 'admin', name: 'Thomas' },
+];
+
+// Route mapping based on role
 const ROLE_ROUTES = {
     patient: '/patient',
-    doctor: '/doctor',
     medecin: '/doctor',
-    'médecin': '/doctor',
-    superuser: '/doctor',
-    user: '/patient',
-    caregiver: '/caregiver',
-    aidant: '/caregiver',
+    aidant: '/family',
     admin: '/admin',
 };
 
-function normalizeRole(value) {
-    const role = String(value || '').trim().toLowerCase();
-    if (role === 'superuser' || role === 'medecin' || role === 'médecin') return 'doctor';
-    if (role === 'aidant' || role === 'family') return 'caregiver';
-    if (role === 'user') return 'patient';
-    return role;
-}
-
-function pickRoleFromCandidate(candidate) {
-    if (Array.isArray(candidate)) {
-        for (const rawRole of candidate) {
-            const normalized = normalizeRole(rawRole);
-            if (ROLE_ROUTES[normalized]) return normalized;
-        }
-        return '';
-    }
-    return normalizeRole(candidate);
-}
-
-function extractRole(user) {
-    const candidates = [
-        user?.['https://vitalio.app/role'],
-        user?.['https://vitalio.app/roles'],
-        user?.app_metadata?.role,
-        user?.app_metadata?.roles,
-        user?.app_metadata?.authorization?.roles,
-        user?.user_metadata?.role,
-        user?.user_metadata?.roles,
-        user?.role,
-        user?.roles,
-    ];
-
-    for (const candidate of candidates) {
-        const picked = pickRoleFromCandidate(candidate);
-        if (picked && ROLE_ROUTES[picked]) return picked;
-    }
-    return 'patient';
-}
-
 export default function Login() {
     const navigate = useNavigate();
-    const hasRedirectedRef = useRef(false);
-    const {
-        isAuthenticated,
-        isLoading,
-        loginWithRedirect,
-        user,
-        getAccessTokenSilently,
-        error: auth0Error,
-    } = useAuth0();
+    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    
-    useEffect(() => {
-        if (!isAuthenticated || !user?.sub) return;
-        handleAuthenticatedUser();
-        
-    }, [isAuthenticated, user?.sub]);
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (error) setError('');
+    };
 
-    async function handleAuthenticatedUser() {
-        try {
-            const token = await getAccessTokenSilently();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
-            
-            try {
-                const profilePayload = {};
-                if (user.given_name)  profilePayload.first_name   = user.given_name;
-                if (user.family_name) profilePayload.last_name    = user.family_name;
-                // Si Auth0 ne fournit que name, le découper pour first_name/last_name (display_name = first + last)
-                if ((!profilePayload.first_name || !profilePayload.last_name) && user.name) {
-                    const parts = String(user.name).trim().split(/\s+/);
-                    if (parts.length >= 2 && !profilePayload.first_name) profilePayload.first_name = parts[0];
-                    if (parts.length >= 2 && !profilePayload.last_name)  profilePayload.last_name  = parts.slice(1).join(' ');
-                }
-                if (user.name)        profilePayload.display_name = user.name;
-                if (user.email)       profilePayload.email        = user.email;
-                if (user.picture)     profilePayload.picture      = user.picture;
-                if (Object.keys(profilePayload).length === 0 && user.email) {
-                    profilePayload.email = user.email;
-                    profilePayload.display_name = user.email;
-                }
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 800));
 
-                if (Object.keys(profilePayload).length > 0) {
-                    await fetch(`${import.meta.env.VITE_API_URL}/api/me/profile`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(profilePayload),
-                    });
-                }
-            } catch (e) {
-                console.warn('Profile sync failed (non-blocking):', e);
-            }
+        const user = MOCK_USERS.find(
+            u => u.email === formData.email && u.password === formData.password
+        );
 
-            
-            let roleForRouting = 'patient';
-            let roleForDisplay = 'Patient';
-            try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/me/role`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    roleForDisplay = data.role || 'Patient';
-                    roleForRouting = normalizeRole(roleForDisplay) || 'patient';
-                } else {
-                    roleForRouting = extractRole(user);
-                    roleForDisplay = roleForRouting === 'doctor' ? 'Médecin' : roleForRouting;
-                }
-            } catch {
-                roleForRouting = extractRole(user);
-                roleForDisplay = roleForRouting === 'doctor' ? 'Médecin' : roleForRouting;
-            }
-
+        if (user) {
+            // Store user info in localStorage for session persistence
             localStorage.setItem('vitalio_user', JSON.stringify({
                 email: user.email,
-                name: user.name || user.email,
-                role: roleForDisplay,
-                picture: user.picture,
+                name: user.name,
+                role: user.role
             }));
-
-            navigate(ROLE_ROUTES[roleForRouting] || '/patient');
-        } catch (error) {
-            console.error('Error handling authenticated user:', error);
+            
+            // Redirect based on role
+            const route = ROLE_ROUTES[user.role];
+            navigate(route);
+        } else {
+            setError('Email ou mot de passe incorrect');
         }
-    };
 
-    const handleLogin = () => {
-        loginWithRedirect({
-            authorizationParams: {
-                screen_hint: 'login',
-            },
-        });
+        setIsLoading(false);
     };
-
-    const handleSignup = () => {
-        loginWithRedirect({
-            authorizationParams: {
-                screen_hint: 'signup',
-            },
-        });
-    };
-
-    if (isLoading) {
-        return (
-            <div className="login-container">
-                <div className="login-card animate-fade-in">
-                    <div className="login-logo-section">
-                        <img src={vitalioLogo} alt="VitalIO Logo" className="login-logo" />
-                        <h1 className="login-title">VitalIO</h1>
-                        <p className="login-subtitle">Chargement...</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="login-container">
-            {}
+            {/* Animated background elements */}
             <div className="login-bg-effects">
                 <div className="bg-blob blob-1"></div>
                 <div className="bg-blob blob-2"></div>
@@ -186,59 +74,116 @@ export default function Login() {
             </div>
 
             <div className="login-card animate-fade-in">
-                {}
+                {/* Logo Section */}
                 <div className="login-logo-section">
                     <img src={vitalioLogo} alt="VitalIO Logo" className="login-logo" />
                     <h1 className="login-title">VitalIO</h1>
                     <p className="login-subtitle">Plateforme de Télésurveillance Médicale</p>
                 </div>
 
-                {}
-                <div className="login-form">
-                    {}
-                    {auth0Error && (
+                {/* Login Form */}
+                <form onSubmit={handleSubmit} className="login-form">
+                    {/* Email Field */}
+                    <div className="input-group">
+                        <label htmlFor="email" className="input-label">
+                            <Mail size={18} />
+                            <span>Email</span>
+                        </label>
+                        <div className="input-wrapper">
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="votre@email.fr"
+                                required
+                                className="login-input"
+                                autoComplete="email"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Password Field */}
+                    <div className="input-group">
+                        <label htmlFor="password" className="input-label">
+                            <Lock size={18} />
+                            <span>Mot de passe</span>
+                        </label>
+                        <div className="input-wrapper">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                id="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="••••••••"
+                                required
+                                className="login-input"
+                                autoComplete="current-password"
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Error Message */}
+                    {error && (
                         <div className="login-error animate-shake">
                             <AlertCircle size={18} />
-                            <span>Erreur d'authentification: {auth0Error.message}</span>
+                            <span>{error}</span>
                         </div>
                     )}
 
-                    {/* Signup Button (primary) */}
+                    {/* Submit Button */}
                     <button 
-                        type="button"
-                        onClick={handleSignup}
-                        className="login-button"
+                        type="submit" 
+                        className={`login-button ${isLoading ? 'loading' : ''}`}
+                        disabled={isLoading}
                     >
-                        <UserPlus size={20} />
-                        <span>S'inscrire</span>
+                        {isLoading ? (
+                            <div className="button-loader"></div>
+                        ) : (
+                            <>
+                                <LogIn size={20} />
+                                <span>Se connecter</span>
+                            </>
+                        )}
                     </button>
+                </form>
 
-                    {}
-                    <button 
-                        type="button"
-                        onClick={handleLogin}
-                        className="login-button login-button-secondary"
-                    >
-                        <LogIn size={20} />
-                        <span>Déjà un compte ? Se connecter</span>
-                    </button>
-
-                    <p className="login-hint">
-                        Créez un compte ou connectez-vous avec Auth0 pour accéder à VitalIO.
-                    </p>
-                </div>
-
-                {}
+                {/* Demo Accounts Info */}
                 <div className="demo-accounts">
-                    <p className="demo-title">Authentification sécurisée</p>
-                    <p className="demo-hint">
-                        Cette application utilise Auth0 pour une authentification sécurisée.
-                        Connectez-vous avec vos identifiants Auth0 pour accéder à la plateforme.
-                    </p>
+                    <p className="demo-title">Comptes de démonstration :</p>
+                    <div className="demo-grid">
+                        <div className="demo-account">
+                            <span className="demo-role patient">Patient</span>
+                            <span className="demo-email">robert@patient.fr</span>
+                        </div>
+                        <div className="demo-account">
+                            <span className="demo-role medecin">Médecin</span>
+                            <span className="demo-email">sophie@medecin.fr</span>
+                        </div>
+                        <div className="demo-account">
+                            <span className="demo-role aidant">Aidant</span>
+                            <span className="demo-email">julie@famille.fr</span>
+                        </div>
+                        <div className="demo-account">
+                            <span className="demo-role admin">Admin</span>
+                            <span className="demo-email">thomas@admin.fr</span>
+                        </div>
+                    </div>
+                    <p className="demo-hint">Mot de passe : [role]123</p>
                 </div>
             </div>
 
-            {}
+            {/* Footer */}
             <footer className="login-footer">
                 <p>© 2026 VitalIO - Télésurveillance Médicale IoT</p>
             </footer>

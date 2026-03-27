@@ -1,32 +1,24 @@
-.env
-.env.local
-.env.*.local
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-back/mosquitto/certs/*.key
-back/mosquitto/certs/*.pem
-back/mosquitto/certs/server.key
-back/mosquitto/certs/ca.key
-back/mosquitto/certs/*.csr
-back/mosquitto/certs/*.srl
+node_modules
+dist
+dist-ssr
+*.local
 
-back/mosquitto/passwd
-
-back/mosquitto/data/*
-!back/mosquitto/data/.gitkeep
-back/mosquitto/log/*
-!back/mosquitto/log/.gitkeep
-
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
-
-!back/mosquitto/certs/.gitkeep
-
-node_modules/
-dist/
-build/
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

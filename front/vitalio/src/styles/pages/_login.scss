@@ -1,6 +1,5 @@
 @use '../variables' as *;
 @use '../mixins' as *;
-@use 'sass:color';
 
 // Login Container
 .login-container {
@@ -13,10 +12,6 @@
     position: relative;
     overflow: hidden;
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-
-    @media (max-width: 480px) {
-        padding: 1rem;
-    }
 }
 
 // Animated Background Effects
@@ -31,7 +26,7 @@
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.22;
+    opacity: 0.4;
     animation: float 20s ease-in-out infinite;
 
     &.blob-1 {
@@ -151,11 +146,6 @@
     object-fit: contain;
     margin-bottom: 1rem;
     animation: logo-pulse 3s ease-in-out infinite;
-
-    @media (max-width: 480px) {
-        width: 80px;
-        height: 80px;
-    }
 }
 
 @keyframes logo-pulse {
@@ -173,15 +163,11 @@
 .login-title {
     font-size: 2.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, $primary, $accent);
+    background: linear-gradient(135deg, $primary, $success);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin-bottom: 0.5rem;
-
-    @media (max-width: 480px) {
-        font-size: 1.875rem;
-    }
 }
 
 .login-subtitle {
@@ -318,7 +304,7 @@
     font-weight: 600;
     font-family: inherit;
     color: white;
-    background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
+    background: linear-gradient(135deg, $primary, darken($primary, 10%));
     cursor: pointer;
     transition: $transition;
     position: relative;
@@ -328,14 +314,14 @@
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(135deg, rgba($primary, 0.95), rgba($primary, 0.85));
+        background: linear-gradient(135deg, $success, $primary);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
 
     &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px -2px rgba($primary, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba($primary, 0.4);
 
         &::before {
             opacity: 1;
@@ -359,20 +345,6 @@
     span {
         position: relative;
         z-index: 1;
-    }
-
-    &-secondary {
-        background: transparent;
-        color: $primary;
-        border: 2px solid $primary;
-
-        &::before {
-            background: rgba($primary, 0.1);
-        }
-
-        &:hover:not(:disabled) {
-            box-shadow: 0 4px 12px rgba($primary, 0.2);
-        }
     }
 }
 
@@ -443,17 +415,17 @@
 
     &.patient {
         background: rgba($success, 0.15);
-        color: color.adjust($success, $lightness: -10%);
+        color: darken($success, 10%);
     }
 
     &.medecin {
         background: rgba($primary, 0.15);
-        color: color.adjust($primary, $lightness: -10%);
+        color: darken($primary, 10%);
     }
 
     &.aidant {
         background: rgba($secondary, 0.15);
-        color: color.adjust($secondary, $lightness: -10%);
+        color: darken($secondary, 10%);
     }
 
     &.admin {
@@ -484,10 +456,4 @@
     font-size: 0.85rem;
     position: relative;
     z-index: 10;
-
-    @media (max-width: 480px) {
-        font-size: 0.75rem;
-        margin-top: 1.5rem;
-        padding: 0 0.5rem;
-    }
 }

@@ -2,7 +2,7 @@ export const CURRENT_PATIENT = {
   id: "P001",
   name: "Robert",
   age: 78,
-  status: "stable", 
+  status: "stable", // stable, warning, critical
   vitals: {
     heartRate: { value: 72, unit: "bpm", status: "normal", trend: "stable" },
     spo2: { value: 96, unit: "%", status: "normal", trend: "down" },

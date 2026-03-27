@@ -43,7 +43,7 @@
                 gap: 0.5rem;
 
                 .icon {
-                    color: #1d4ed8;
+                    color: #3b82f6; // blue-500
                 }
             }
 
@@ -62,12 +62,12 @@
                 height: 0.5rem;
                 width: 0.5rem;
                 border-radius: 9999px;
-                background-color: #047857;
+                background-color: #22c55e; // green-500
             }
 
             .status-text {
                 font-size: 0.75rem;
-                color: #047857;
+                color: #22c55e;
                 text-transform: uppercase;
                 letter-spacing: 0.1em;
             }
@@ -162,7 +162,7 @@
                 outline: none;
 
                 &:focus {
-                    border-color: #1d4ed8;
+                    border-color: #3b82f6; // blue-500
                 }
             }
         }
