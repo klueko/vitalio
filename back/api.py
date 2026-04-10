@@ -109,8 +109,14 @@ def get_my_role():
     jwt_role = (payload.get(f"{ns}role") or payload.get("role") or "").strip()
     role_raw = (db_role or jwt_role or "").strip().lower()
     role_display_map = {
-        "superuser": "Superuser", "doctor": "Médecin", "medecin": "Médecin", "médecin": "Médecin",
-        "patient": "Patient", "caregiver": "Aidant", "aidant": "Aidant", "admin": "Admin",
+        "superuser": "doctor", 
+        "doctor": "doctor", 
+        "medecin": "doctor", 
+        "médecin": "doctor",
+        "patient": "patient", 
+        "caregiver": "caregiver", 
+        "aidant": "caregiver", 
+        "admin": "admin",
     }
     display_role = role_display_map.get(role_raw, "Patient")
     return jsonify({"role": display_role, "user_id_auth": user_id_auth}), 200
