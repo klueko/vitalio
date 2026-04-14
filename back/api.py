@@ -1471,6 +1471,75 @@ def get_doctor_patient_trends(patient_id: str):
     return jsonify({"patient_id": patient_id, "device_id": device_id, "trends": {"7d": trend_7, "30d": trend_30}}), 200
 
 
+@app.route("/api/doctor/patients/<patient_id>/device", methods=["POST"])
+@requires_auth
+@requires_role("doctor", "superuser", "medecin")
+def assign_device_to_patient(patient_id: str):
+    """Associe un device_id à un patient — appelé par le médecin."""
+    patient_id = _resolve_patient_id(patient_id)
+    ensure_patient_access_or_403(patient_id)
+
+    payload = request.get_json(silent=True) or {}
+    device_id = str(payload.get("device_id") or "").strip()
+
+    if not device_id:
+        return jsonify({"code": "missing_device_id", "message": "device_id requis"}), 400
+
+    existing = get_identity_db().users_devices.find_one({"device_id": device_id})
+    if existing and existing.get("user_id_auth") != patient_id:
+        return jsonify({
+            "code": "device_already_assigned",
+            "message": "Ce device est déjà assigné à un autre patient",
+        }), 409
+
+    now = datetime.now(timezone.utc)
+    try:
+        get_identity_db().users_devices.update_one(
+            {"user_id_auth": patient_id},
+            {
+                "$set": {
+                    "user_id_auth": patient_id,
+                    "device_id": device_id,
+                    "assigned_by": g.user_id_auth,
+                    "assigned_at": now,
+                }
+            },
+            upsert=True,
+        )
+    except PyMongoError as e:
+        raise DatabaseError({"code": "device_assign_error", "message": str(e)}, 500)
+
+    return jsonify({
+        "message": "Device assigné au patient",
+        "patient_id": patient_id,
+        "device_id": device_id,
+        "assigned_at": datetime_to_iso_utc(now),
+    }), 200
+
+
+@app.route("/api/doctor/patients/<patient_id>/device", methods=["GET"])
+@requires_auth
+@requires_role("doctor", "superuser", "medecin")
+def get_patient_device(patient_id: str):
+    """Retourne le device_id associé à un patient."""
+    patient_id = _resolve_patient_id(patient_id)
+    ensure_patient_access_or_403(patient_id)
+
+    doc = get_identity_db().users_devices.find_one(
+        {"user_id_auth": patient_id},
+        {"_id": 0},
+    )
+    if not doc or not doc.get("device_id"):
+        return jsonify({"code": "no_device", "message": "Aucun device assigné"}), 404
+
+    assigned_at = doc.get("assigned_at")
+    return jsonify({
+        "patient_id": patient_id,
+        "device_id": doc.get("device_id"),
+        "assigned_at": datetime_to_iso_utc(assigned_at) if assigned_at else None,
+    }), 200
+
+
 @app.route("/api/doctor/alerts", methods=["GET"])
 @requires_auth
 @requires_role("doctor", "superuser", "medecin")
@@ -2172,18 +2241,14 @@ def get_patient_ml_analysis(patient_id: str):
 
 @app.route("/api/device/measurements", methods=["POST"])
 def submit_device_measurement():
-    """Route sans auth pour l'ESP32 - vérification par device_id"""
     payload = request.get_json(silent=True) or {}
-    
     device_id = str(payload.get("device_id") or "").strip()
     if not device_id:
         return jsonify({"code": "missing_device_id", "message": "device_id requis"}), 400
 
-    # Vérifier que le device_id existe en base
-    device_doc = get_medical_db().measurements.find_one({"device_id": device_id})
-    identity_doc = get_identity_db().users.find_one({"device_id": device_id})
-    
-    if not device_doc and not identity_doc:
+    # Vérifier dans users_devices — c'est là que sont les vrais devices
+    device_doc = get_identity_db().users_devices.find_one({"device_id": device_id})
+    if not device_doc:
         return jsonify({"code": "unknown_device", "message": "device_id inconnu"}), 403
 
     try:
@@ -2192,14 +2257,14 @@ def submit_device_measurement():
         return jsonify({"code": "invalid_payload", "message": str(e)}), 400
 
     measurement_doc = {
-        "device_id": device_id,
-        "measured_at": normalized["measured_at"],
-        "heart_rate": normalized["heart_rate"],
-        "spo2": normalized["spo2"],
-        "temperature": normalized["temperature"],
-        "signal_quality": normalized["signal_quality"],
-        "source": "esp32",
-        "status": normalized["status"],
+        "device_id":         device_id,
+        "measured_at":       normalized["measured_at"],
+        "heart_rate":        normalized["heart_rate"],
+        "spo2":              normalized["spo2"],
+        "temperature":       normalized["temperature"],
+        "signal_quality":    normalized["signal_quality"],
+        "source":            normalized["source"],
+        "status":            normalized["status"],
         "validation_reasons": normalized["reasons"],
     }
 
@@ -2209,17 +2274,143 @@ def submit_device_measurement():
     except PyMongoError as e:
         return jsonify({"code": "insert_error", "message": str(e)}), 500
 
-    # ML scoring
     try:
         run_ml_scoring(device_id=device_id, measurement_doc=measurement_doc)
     except Exception as e:
         logger.warning("ML scoring failed: %s", e)
 
     return jsonify({
-        "message": "Mesure enregistree",
-        "device_id": device_id,
+        "message":        "Mesure enregistree",
+        "device_id":      device_id,
         "measurement_id": str(ins.inserted_id),
     }), 201
+
+
+# ============================================================================
+# ROUTES - Device Enrollment
+# ============================================================================
+
+
+@app.route("/api/device/enrollment", methods=["POST"])
+def create_enrollment_code():
+    """ESP32 soumet un code d'enrollment — stocké 10 minutes en base."""
+    payload = request.get_json(silent=True) or {}
+    device_id = str(payload.get("device_id") or "").strip()
+    enrollment_code = str(payload.get("enrollment_code") or "").strip()
+
+    if not device_id or not enrollment_code:
+        return jsonify({"code": "missing_fields", "message": "device_id et enrollment_code requis"}), 400
+
+    device_doc = get_identity_db().users_devices.find_one({"device_id": device_id})
+    if not device_doc:
+        return jsonify({"code": "unknown_device", "message": "Device inconnu"}), 403
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=10)
+
+    try:
+        get_identity_db().device_enrollments.update_one(
+            {"device_id": device_id},
+            {"$set": {
+                "device_id": device_id,
+                "enrollment_code": enrollment_code,
+                "enrolled": False,
+                "created_at": now,
+                "expires_at": expires_at,
+            }},
+            upsert=True,
+        )
+    except PyMongoError as e:
+        logger.warning("device_enrollments upsert failed: %s", e)
+        return jsonify({"code": "enrollment_store_error", "message": str(e)}), 500
+
+    logger.info("Enrollment code created for device %s", device_id)
+    return jsonify({
+        "message": "Code enrollment enregistre",
+        "device_id": device_id,
+        "expires_at": datetime_to_iso_utc(expires_at),
+    }), 201
+
+
+@app.route("/api/device/enrollment/status", methods=["GET"])
+def check_enrollment_status():
+    """ESP32 vérifie si le patient a validé le code."""
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"code": "missing_device_id"}), 400
+
+    doc = get_identity_db().device_enrollments.find_one({"device_id": device_id})
+    if not doc:
+        return jsonify({"enrolled": False}), 200
+
+    expires_at = doc.get("expires_at")
+    if isinstance(expires_at, datetime):
+        exp = expires_at.replace(tzinfo=timezone.utc) if expires_at.tzinfo is None else expires_at
+        if exp < datetime.now(timezone.utc):
+            return jsonify({"enrolled": False, "reason": "expired"}), 200
+
+    return jsonify({"enrolled": doc.get("enrolled", False)}), 200
+
+
+@app.route("/api/patient/enroll-device", methods=["POST"])
+@requires_auth
+@requires_role("patient")
+def patient_enroll_device():
+    """Patient entre le code à 6 chiffres pour lier le device à son compte."""
+    payload = request.get_json(silent=True) or {}
+    enrollment_code = str(payload.get("enrollment_code") or "").strip()
+
+    if not enrollment_code:
+        return jsonify({"code": "missing_code", "message": "enrollment_code requis"}), 400
+    if len(enrollment_code) != 6 or not enrollment_code.isdigit():
+        return jsonify({"code": "invalid_format", "message": "Le code doit contenir exactement 6 chiffres"}), 400
+
+    now = datetime.now(timezone.utc)
+    doc = get_identity_db().device_enrollments.find_one({
+        "enrollment_code": enrollment_code,
+        "enrolled": False,
+    })
+
+    if not doc:
+        return jsonify({"code": "invalid_code", "message": "Code invalide ou deja utilise"}), 404
+
+    expires_at = doc.get("expires_at")
+    if isinstance(expires_at, datetime):
+        exp = expires_at.replace(tzinfo=timezone.utc) if expires_at.tzinfo is None else expires_at
+        if exp < now:
+            return jsonify({"code": "expired_code", "message": "Code expire, redemandez-en un"}), 410
+
+    device_id = doc["device_id"]
+
+    device_doc = get_identity_db().users_devices.find_one({
+        "device_id": device_id,
+        "user_id_auth": g.user_id_auth,
+    })
+    if not device_doc:
+        return jsonify({
+            "code": "device_not_yours",
+            "message": "Ce device n'est pas assigne a votre compte",
+        }), 403
+
+    try:
+        get_identity_db().device_enrollments.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {
+                "enrolled": True,
+                "enrolled_at": now,
+                "enrolled_by": g.user_id_auth,
+            }},
+        )
+    except PyMongoError as e:
+        logger.warning("device_enrollments finalize failed: %s", e)
+        return jsonify({"code": "enrollment_update_error", "message": str(e)}), 500
+
+    logger.info("Device %s enrolled by patient %s", device_id, g.user_id_auth)
+    return jsonify({
+        "message": "Device enregistre avec succes",
+        "device_id": device_id,
+    }), 200
+
 
 # ============================================================================
 # MAIN

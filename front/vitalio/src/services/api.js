@@ -68,6 +68,13 @@ export async function completeOnboarding(accessToken, payload) {
   })
 }
 
+export async function enrollPatientDevice(accessToken, enrollmentCode) {
+  return apiRequest('/api/patient/enroll-device', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ enrollment_code: enrollmentCode }),
+  })
+}
+
 export async function submitPatientMeasurement(accessToken, measurement) {
   return apiRequest('/api/me/measurements', accessToken, {
     method: 'POST',
@@ -90,6 +97,33 @@ export async function getDoctorPatientMeasurements(accessToken, patientId, days 
 export async function getDoctorPatientTrends(accessToken, patientId) {
   return apiRequest(`/api/doctor/patients/${encodeURIComponent(patientId)}/trends`, accessToken, {
     method: 'GET',
+  })
+}
+
+/** GET device mapping; returns null when no device (404 from API). */
+export async function getDoctorPatientDevice(accessToken, patientId) {
+  const url = `${API_URL}/api/doctor/patients/${encodeURIComponent(patientId)}/device`
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+  if (response.status === 404) {
+    const body = await response.json().catch(() => ({}))
+    if (body.code === 'no_device') return null
+  }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || `HTTP Error: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function assignDoctorPatientDevice(accessToken, patientId, deviceId) {
+  return apiRequest(`/api/doctor/patients/${encodeURIComponent(patientId)}/device`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ device_id: deviceId }),
   })
 }
 

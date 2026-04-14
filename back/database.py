@@ -43,7 +43,7 @@ def get_medical_db():
 def init_database():
     """
     Ensure MongoDB collections and indexes exist.
-    Vitalio_Identity: users, users_devices, doctor_patients, caregiver_patients.
+    Vitalio_Identity: users, users_devices, device_enrollments, doctor_patients, caregiver_patients.
     Vitalio_Medical: measurements, doctor_feedback, alert collections.
     """
     try:
@@ -76,6 +76,8 @@ def init_database():
         identity_db.alerts.create_index([("author", 1), ("createdAt", -1)])
         identity_db.push_subscriptions.create_index([("user_id_auth", 1), ("endpoint", 1)], unique=True)
         identity_db.push_subscriptions.create_index("user_id_auth")
+        identity_db.device_enrollments.create_index("device_id", unique=True)
+        identity_db.device_enrollments.create_index([("enrollment_code", 1), ("enrolled", 1)])
 
         medical_db.measurements.create_index([("device_id", 1), ("measured_at", -1)])
         medical_db.doctor_feedback.create_index([("patient_user_id_auth", 1), ("created_at", -1)])

@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
-import { ArrowLeft, BrainCircuit, Copy, Heart, Mail, PhoneCall, Thermometer, User, Users, Wind } from 'lucide-react'
+import { ArrowLeft, BrainCircuit, Copy, Cpu, Heart, Mail, PhoneCall, Thermometer, User, Users, Wind } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import {
+  assignDoctorPatientDevice,
   createDoctorFeedback,
+  getDoctorPatientDevice,
   getDoctorPatientMeasurements,
   getDoctorPatientTrends,
   getLatestPatientFeedback,
@@ -12,6 +14,9 @@ import {
   getPatientProfileForDoctor,
 } from '../services/api'
 import DoctorLayout from '../components/DoctorLayout'
+
+/** Message API quand aucun enregistrement users_devices n’expose encore de device_id mesurable. */
+const NO_PATIENT_DEVICE_MESSAGE = 'No device record found for patient'
 
 function formatDay(timestamp) {
   if (!timestamp) return ''
@@ -74,6 +79,11 @@ export default function DoctorPatientDetail() {
   const [feedbackError, setFeedbackError] = useState('')
   const [caregivers, setCaregivers] = useState([])
   const [patientProfile, setPatientProfile] = useState(null)
+  const [patientDevice, setPatientDevice] = useState(null)
+  const [deviceIdInput, setDeviceIdInput] = useState('')
+  const [deviceSaving, setDeviceSaving] = useState(false)
+  const [deviceError, setDeviceError] = useState('')
+  const [deviceSuccess, setDeviceSuccess] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -83,12 +93,23 @@ export default function DoctorPatientDetail() {
         setLoading(true)
         setError('')
         const token = await getAccessTokenSilently()
-        const [measurementsRes, trendsRes, feedbackRes, caregiverRes, profileRes] = await Promise.all([
-          getDoctorPatientMeasurements(token, patientId, 30),
-          getDoctorPatientTrends(token, patientId),
+        const [measurementsRes, trendsRes, feedbackRes, caregiverRes, profileRes, deviceDoc] = await Promise.all([
+          getDoctorPatientMeasurements(token, patientId, 30).catch((e) => {
+            if (e.message && e.message.includes(NO_PATIENT_DEVICE_MESSAGE)) {
+              return { measurements: [], device_id: null, patient_id: patientId }
+            }
+            throw e
+          }),
+          getDoctorPatientTrends(token, patientId).catch((e) => {
+            if (e.message && e.message.includes(NO_PATIENT_DEVICE_MESSAGE)) {
+              return { trends: null, patient_id: patientId }
+            }
+            throw e
+          }),
           getLatestPatientFeedback(token, patientId, 5),
           getPatientCaregiverInfo(token, patientId).catch(() => ({ caregivers: [] })),
           getPatientProfileForDoctor(token, patientId).catch(() => ({ profile: null })),
+          getDoctorPatientDevice(token, patientId),
         ])
         if (mounted) {
           const rows = Array.isArray(measurementsRes.measurements) ? measurementsRes.measurements : []
@@ -97,6 +118,8 @@ export default function DoctorPatientDetail() {
           setFeedback(Array.isArray(feedbackRes.feedback) ? feedbackRes.feedback : [])
           setCaregivers(Array.isArray(caregiverRes?.caregivers) ? caregiverRes.caregivers : [])
           setPatientProfile(profileRes?.profile || null)
+          setPatientDevice(deviceDoc)
+          setDeviceIdInput(deviceDoc?.device_id ? String(deviceDoc.device_id) : '')
         }
       } catch (fetchError) {
         if (mounted) {
@@ -114,6 +137,38 @@ export default function DoctorPatientDetail() {
       mounted = false
     }
   }, [getAccessTokenSilently, patientId])
+
+  const submitPatientDevice = async () => {
+    const trimmed = deviceIdInput.trim()
+    if (!trimmed) {
+      setDeviceError('Indiquez l’identifiant inscrit sur le boîtier (ex. ESP32-0042).')
+      return
+    }
+    try {
+      setDeviceSaving(true)
+      setDeviceError('')
+      setDeviceSuccess('')
+      const token = await getAccessTokenSilently()
+      await assignDoctorPatientDevice(token, patientId, trimmed)
+      const deviceDoc = await getDoctorPatientDevice(token, patientId)
+      setPatientDevice(deviceDoc)
+      setDeviceSuccess('Boîtier associé. Le patient peut finaliser l’appairage chez lui.')
+      try {
+        const [measurementsRes, trendsRes] = await Promise.all([
+          getDoctorPatientMeasurements(token, patientId, 30),
+          getDoctorPatientTrends(token, patientId),
+        ])
+        setMeasurements(Array.isArray(measurementsRes.measurements) ? measurementsRes.measurements : [])
+        setTrends(trendsRes.trends || null)
+      } catch {
+        /* mesures encore absentes tant que le boîtier n’envoie pas de données */
+      }
+    } catch (e) {
+      setDeviceError(e.message || 'Association impossible.')
+    } finally {
+      setDeviceSaving(false)
+    }
+  }
 
   const selectedTrend = windowDays === 7 ? trends?.['7d'] : trends?.['30d']
 
@@ -260,6 +315,57 @@ export default function DoctorPatientDetail() {
                   </div>
                 </section>
               )}
+              <section className="doctor-patients-section">
+                <div className="doctor-patients-card">
+                  <div className="section-header">
+                    <h3><Cpu size={20} /> Boîtier patient</h3>
+                  </div>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
+                    Saisissez ou scannez l’identifiant matériel affiché sur le boîtier (ex.&nbsp;ESP32-0042).
+                    Une fois enregistré, le patient peut terminer l’enrôlement à domicile.
+                  </p>
+                  {patientDevice?.assigned_at && (
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#94a3b8' }}>
+                      Dernière association côté dossier&nbsp;:{' '}
+                      {new Date(patientDevice.assigned_at).toLocaleString('fr-FR')}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <label style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Device ID</span>
+                      <input
+                        type="text"
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '0.95rem',
+                        }}
+                        placeholder="ESP32-0042"
+                        value={deviceIdInput}
+                        onChange={(ev) => setDeviceIdInput(ev.target.value)}
+                        autoComplete="off"
+                        spellCheck="false"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="doctor-btn doctor-btn-primary"
+                      style={{ marginTop: '1.35rem' }}
+                      disabled={deviceSaving}
+                      onClick={submitPatientDevice}
+                    >
+                      {deviceSaving ? 'Enregistrement…' : 'Enregistrer le boîtier'}
+                    </button>
+                  </div>
+                  {deviceError && <p className="doctor-error" style={{ marginTop: '0.75rem' }}>{deviceError}</p>}
+                  {deviceSuccess && (
+                    <p style={{ marginTop: '0.75rem', color: '#15803d', fontSize: '0.875rem' }}>{deviceSuccess}</p>
+                  )}
+                </div>
+              </section>
+
               {caregivers.length > 0 && (
                 <section className="doctor-patients-section">
                   <div className="doctor-patients-card">

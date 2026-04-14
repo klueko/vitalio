@@ -10,6 +10,7 @@ import PatientProfileView from './pages/PatientProfileView';
 import PatientOnboarding from './pages/PatientOnboarding';
 import PatientMeasurement from './pages/PatientMeasurement';
 import PatientMLView from './pages/PatientMLView';
+import EnrollDevice from './pages/EnrollDevice';
 import DoctorView from './pages/DoctorView';
 import DoctorPatientDetail from './pages/DoctorPatientDetail';
 import DoctorPatientML from './pages/DoctorPatientML';
@@ -91,6 +92,18 @@ function AppRoutes() {
             <RoleProtectedRoute allowedRoles={['patient']}>
               <PatientOnboardingGuard>
                 <PatientMLView />
+              </PatientOnboardingGuard>
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/enroll-device"
+        element={
+          <ProtectedRoute>
+            <RoleProtectedRoute allowedRoles={['patient']}>
+              <PatientOnboardingGuard>
+                <EnrollDevice />
               </PatientOnboardingGuard>
             </RoleProtectedRoute>
           </ProtectedRoute>
